@@ -13,6 +13,21 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Écarter un champ par déstructuration au reste (`const { sim, ...row }`)
+      // est la façon idiomatique de retirer une propriété d'un objet : la
+      // variable extraite est inutilisée par construction, ce n'est pas un oubli.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          ignoreRestSiblings: true,
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
