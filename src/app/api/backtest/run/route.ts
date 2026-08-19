@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { getSession } from "@/lib/auth/session";
 import { runBacktestForStrategy } from "@/lib/backtest/run-for-strategy";
 import { YahooDataError } from "@/lib/data-fetching/yahoo/client";
 import { BacktestError } from "@/lib/engine/run-backtest";
 import { MissingFxDataError } from "@/lib/engine/fx";
+import { backtestRequestSchema } from "@/lib/validation/backtest.schema";
 
 /**
  * Le premier backtest d'une stratégie télécharge l'historique complet de chacun
@@ -16,20 +16,20 @@ import { MissingFxDataError } from "@/lib/engine/fx";
  */
 export const maxDuration = 60;
 
-const bodySchema = z.object({
-  strategyId: z.uuid(),
-  youngAssetResolution: z.enum(["start-late", "use-proxy"]).nullish(),
-});
-
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const parsed = backtestRequestSchema.safeParse(
+    await request.json().catch(() => null),
+  );
   if (!parsed.success) {
-    return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Requête invalide." },
+      { status: 400 },
+    );
   }
 
   try {
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       strategyId: parsed.data.strategyId,
       userId: session.user.id,
       youngAssetResolution: parsed.data.youngAssetResolution ?? undefined,
+      draft: parsed.data.draft ?? null,
     });
 
     return NextResponse.json(response);

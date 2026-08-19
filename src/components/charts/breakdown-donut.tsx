@@ -64,8 +64,8 @@ export function BreakdownDonut({
                 strokeWidth={2}
                 isAnimationActive={false}
               >
-                {colored.map((slice) => (
-                  <Cell key={slice.category} fill={slice.color} />
+                {colored.map((slice, index) => (
+                  <Cell key={slice.category + index} fill={slice.color} />
                 ))}
               </Pie>
               <Tooltip
@@ -97,8 +97,11 @@ export function BreakdownDonut({
         </div>
 
         <ul className="min-w-0 flex-1 space-y-1 text-xs">
-          {colored.map((slice) => (
-            <li key={slice.category} className="flex items-center gap-2">
+          {colored.map((slice, index) => (
+            <li
+              key={slice.category + index}
+              className="flex items-center gap-2"
+            >
               <span
                 aria-hidden
                 className="size-2 shrink-0 rounded-sm"

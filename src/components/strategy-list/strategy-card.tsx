@@ -87,7 +87,7 @@ export function StrategyCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/strategies/${strategy.id}/edit`}>Modifier</Link>
+              <Link href={`/strategies/${strategy.id}`}>Ouvrir</Link>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() =>
@@ -97,7 +97,7 @@ export function StrategyCard({
                     toast.error(result.error);
                     return;
                   }
-                  router.push(`/strategies/${result.data.id}/edit`);
+                  router.push(`/strategies/${result.data.id}`);
                 })
               }
             >

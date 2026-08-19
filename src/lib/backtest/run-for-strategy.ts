@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { latestDataDate } from "@/lib/data-fetching/cache-orchestrator";
 import { inflationCoverageWarning } from "@/lib/data-fetching/inflation/loader";
@@ -29,15 +29,34 @@ export interface ResultAssetInfo {
   dataPartial: boolean;
 }
 
+/**
+ * Paramètres saisis mais pas encore enregistrés.
+ *
+ * L'écran de stratégie recalcule à chaque modification d'un curseur, bien avant
+ * que l'utilisateur n'ait décidé de conserver la variante. Le brouillon est donc
+ * calculé **sans jamais toucher la stratégie en base** : c'est ce qui permet
+ * d'explorer une allocation sans détruire celle qu'on avait enregistrée.
+ */
+export interface BacktestDraft {
+  params: StrategyParams;
+  /** Poids en fraction, déjà renormalisés à 1 par `toSelection`. */
+  selection: readonly { assetId: string; targetWeight: number }[];
+}
+
 export interface StrategyBacktestResponse {
   strategyId: string;
   strategyName: string;
+  /** Paramètres effectivement utilisés : la projection en tire le versement
+   *  mensuel proposé par défaut. */
+  params: StrategyParams;
   result: BacktestResult;
   assets: ResultAssetInfo[];
   benchmarkLabel: string | null;
   warnings: string[];
   /** Vrai si les métriques proviennent du cache plutôt que d'un nouveau calcul. */
   fromCache: boolean;
+  /** Vrai si le résultat porte sur un brouillon non enregistré. */
+  isDraft: boolean;
 }
 
 /**
@@ -60,8 +79,13 @@ export async function runBacktestForStrategy(options: {
    *  échantillonnée sur des dates différentes et les courbes ne seraient plus
    *  superposables. Elle allège elle-même le résultat fusionné. */
   downsample?: boolean;
+  /** Paramètres saisis mais pas encore enregistrés. Quand il est fourni, la
+   *  stratégie en base ne sert plus qu'à vérifier la propriété et à nommer le
+   *  résultat : ni ses paramètres ni ses actifs ne sont lus, et rien n'est
+   *  écrit. */
+  draft?: BacktestDraft | null;
 }): Promise<StrategyBacktestResponse> {
-  const { strategyId, userId } = options;
+  const { strategyId, userId, draft } = options;
 
   const [strategy] = await db
     .select()
@@ -73,33 +97,50 @@ export async function runBacktestForStrategy(options: {
     throw new BacktestError("Stratégie introuvable.");
   }
 
-  const rows = await db
-    .select({
-      asset: assets,
-      targetWeight: strategyAssets.targetWeight,
-      sortOrder: strategyAssets.sortOrder,
-    })
-    .from(strategyAssets)
-    .innerJoin(assets, eq(assets.id, strategyAssets.assetId))
-    .where(eq(strategyAssets.strategyId, strategyId))
-    .orderBy(asc(strategyAssets.sortOrder));
+  const selection = draft
+    ? draft.selection.map((entry) => ({ ...entry }))
+    : (
+        await db
+          .select({
+            assetId: strategyAssets.assetId,
+            targetWeight: strategyAssets.targetWeight,
+          })
+          .from(strategyAssets)
+          .where(eq(strategyAssets.strategyId, strategyId))
+          .orderBy(asc(strategyAssets.sortOrder))
+      ).map((row) => ({
+        assetId: row.assetId,
+        targetWeight: Number(row.targetWeight),
+      }));
 
-  if (rows.length === 0) {
+  if (selection.length === 0) {
     throw new BacktestError("Cette stratégie ne contient aucun actif.");
   }
 
+  // Chargés en une requête puis réordonnés selon la sélection : `inArray` ne
+  // garantit aucun ordre, et l'ordre des actifs détermine leurs couleurs.
+  const assetById = new Map(
+    (
+      await db
+        .select()
+        .from(assets)
+        .where(inArray(assets.id, selection.map((entry) => entry.assetId)))
+    ).map((asset) => [asset.id, asset]),
+  );
+
+  const missing = selection.find((entry) => !assetById.has(entry.assetId));
+  if (missing) {
+    throw new BacktestError("Un des actifs sélectionnés n'existe plus.");
+  }
+
+  const baseParams = draft ? draft.params : strategy.params;
   const params: StrategyParams = {
-    ...strategy.params,
+    ...baseParams,
     youngAssetResolution:
       options.youngAssetResolution !== undefined
         ? options.youngAssetResolution
-        : strategy.params.youngAssetResolution,
+        : baseParams.youngAssetResolution,
   };
-
-  const selection = rows.map((row) => ({
-    assetId: row.asset.id,
-    targetWeight: Number(row.targetWeight),
-  }));
 
   const prepared = await prepareEngineInput({
     selection,
@@ -117,49 +158,58 @@ export async function runBacktestForStrategy(options: {
 
   // --- Mise en cache des métriques ------------------------------------------
 
-  const paramsHash = computeParamsHash(params, selection);
-  const dataThrough =
-    (await latestDataDate(selection.map((s) => s.assetId))) ??
-    result.metrics.endDate;
+  // Un brouillon n'est pas mis en cache : il ne décrit pas la stratégie
+  // enregistrée, et les cards de `/strategies` lisent cette table. Y écrire
+  // ferait afficher dans la liste des chiffres qui ne correspondent à aucun
+  // état sauvegardé.
+  if (!draft) {
+    const paramsHash = computeParamsHash(params, selection);
+    const dataThrough =
+      (await latestDataDate(selection.map((s) => s.assetId))) ??
+      result.metrics.endDate;
 
-  await db
-    .insert(backtestResults)
-    .values({
-      strategyId,
-      paramsHash,
-      dataThroughDate: dataThrough,
-      metrics: result.metrics,
-    })
-    .onConflictDoUpdate({
-      target: [
-        backtestResults.strategyId,
-        backtestResults.paramsHash,
-        backtestResults.dataThroughDate,
-      ],
-      set: { metrics: result.metrics, computedAt: new Date() },
-    });
-
-  const weightById = new Map(selection.map((s) => [s.assetId, s.targetWeight]));
+    await db
+      .insert(backtestResults)
+      .values({
+        strategyId,
+        paramsHash,
+        dataThroughDate: dataThrough,
+        metrics: result.metrics,
+      })
+      .onConflictDoUpdate({
+        target: [
+          backtestResults.strategyId,
+          backtestResults.paramsHash,
+          backtestResults.dataThroughDate,
+        ],
+        set: { metrics: result.metrics, computedAt: new Date() },
+      });
+  }
 
   return {
     strategyId,
     strategyName: strategy.name,
+    params,
     result: options.downsample === false ? result : downsampleResult(result),
-    assets: rows.map((row) => ({
-      id: row.asset.id,
-      label: row.asset.shortLabel,
-      name: row.asset.name,
-      ticker: row.asset.tickerYahoo,
-      type: row.asset.type,
-      peaEligible: row.asset.peaEligible,
-      ter: row.asset.ter === null ? null : Number(row.asset.ter),
-      targetWeight: weightById.get(row.asset.id) ?? 0,
-      sectorBreakdown: row.asset.sectorBreakdown,
-      geoBreakdown: row.asset.geoBreakdown,
-      dataPartial: row.asset.dataPartial,
-    })),
+    assets: selection.map((entry) => {
+      const asset = assetById.get(entry.assetId)!;
+      return {
+        id: asset.id,
+        label: asset.shortLabel,
+        name: asset.name,
+        ticker: asset.tickerYahoo,
+        type: asset.type,
+        peaEligible: asset.peaEligible,
+        ter: asset.ter === null ? null : Number(asset.ter),
+        targetWeight: entry.targetWeight,
+        sectorBreakdown: asset.sectorBreakdown,
+        geoBreakdown: asset.geoBreakdown,
+        dataPartial: asset.dataPartial,
+      };
+    }),
     benchmarkLabel: prepared.input.benchmark?.label ?? null,
     warnings,
     fromCache: false,
+    isDraft: draft != null,
   };
 }

@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { assets, type Asset } from "@/lib/db/schema";
@@ -66,6 +66,67 @@ export async function searchAssets(
 
   // `sim` sert au tri côté SQL et n'a pas à remonter jusqu'à l'interface.
   return rows.rows.map(({ sim, ...row }) => row);
+}
+
+export interface CatalogAsset extends AssetSearchResult {
+  /** Indice répliqué, `null` pour une action, une crypto ou un métal. */
+  trackedIndex: string | null;
+  /** Zone géographique dominante, pour l'affichage seul. */
+  topGeo: string | null;
+  /** Secteur dominant, pour l'affichage seul. */
+  topSector: string | null;
+}
+
+/** Catégorie la plus lourde d'une répartition. */
+function dominantOf(breakdown: Record<string, number> | null): string | null {
+  if (!breakdown) return null;
+
+  let best: string | null = null;
+  let bestValue = -1;
+  for (const [category, value] of Object.entries(breakdown)) {
+    if (value > bestValue) {
+      best = category;
+      bestValue = value;
+    }
+  }
+  return best;
+}
+
+/**
+ * Catalogue complet, pour la navigation par filtres.
+ *
+ * Chargé en une fois côté serveur et transmis à l'éditeur : trente-deux lignes
+ * ne justifient ni pagination ni appel réseau supplémentaire, et l'utilisateur
+ * obtient une liste immédiate plutôt qu'un état de chargement.
+ *
+ * `topGeo` et `topSector` sont calculés ici, mais destinés au seul affichage.
+ * On ne filtre pas dessus : un ETF n'est pas *une* géographie, il en contient
+ * une répartition — sur ce catalogue, neuf ETF sur dix sont à dominante
+ * américaine, si bien qu'un filtre « États-Unis » n'écarterait qu'un seul
+ * support. Ces valeurs situent un actif, elles ne le classent pas.
+ */
+export async function listCatalogAssets(): Promise<CatalogAsset[]> {
+  const rows = await db
+    .select()
+    .from(assets)
+    .where(eq(assets.isCatalog, true))
+    .orderBy(asc(assets.type), asc(assets.shortLabel));
+
+  return rows.map((row) => ({
+    id: row.id,
+    tickerYahoo: row.tickerYahoo,
+    isin: row.isin,
+    name: row.name,
+    shortLabel: row.shortLabel,
+    type: row.type,
+    peaEligible: row.peaEligible,
+    ter: row.ter,
+    currency: row.currency,
+    dataPartial: row.dataPartial,
+    trackedIndex: row.trackedIndex,
+    topGeo: dominantOf(row.geoBreakdown),
+    topSector: dominantOf(row.sectorBreakdown),
+  }));
 }
 
 /** Actifs d'une stratégie, proxy résolu, prêts à alimenter le moteur. */

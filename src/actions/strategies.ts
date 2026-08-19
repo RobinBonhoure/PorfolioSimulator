@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { strategies, strategyAssets } from "@/lib/db/schema";
+import type { YoungAssetResolution } from "@/lib/engine/types";
 import {
   strategyFormSchema,
   type StrategyFormValues,
@@ -80,6 +81,10 @@ export async function createStrategy(
 export async function updateStrategy(
   strategyId: string,
   input: StrategyFormValues,
+  /** Arbitrage sur les actifs jeunes, conservé d'un enregistrement à l'autre :
+   *  sans lui, chaque sauvegarde le remettrait à zéro et l'écran redemanderait
+   *  un choix déjà fait. */
+  youngAssetResolution: YoungAssetResolution | null = null,
 ): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
 
@@ -97,7 +102,7 @@ export async function updateStrategy(
     .set({
       name: values.name,
       description: values.description ?? null,
-      params: toEngineParams(values),
+      params: toEngineParams(values, youngAssetResolution),
       updatedAt: new Date(),
     })
     .where(and(eq(strategies.id, strategyId), eq(strategies.userId, user.id)))

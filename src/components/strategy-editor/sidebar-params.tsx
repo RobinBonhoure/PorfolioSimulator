@@ -117,24 +117,33 @@ function ToggleRow({
 export function SidebarParams({
   values,
   onChange,
+  includeName = true,
 }: {
   values: StrategyFormValues;
   onChange: (patch: Partial<StrategyFormValues>) => void;
+  /** Mettre à faux quand le nom est saisi ailleurs — l'écran de création lui
+   *  donne sa propre place, en tête de page. */
+  includeName?: boolean;
 }) {
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="strategy-name" className="text-xs text-muted-foreground">
-          Nom de la stratégie
-        </Label>
-        <Input
-          id="strategy-name"
-          value={values.name}
-          onChange={(event) => onChange({ name: event.target.value })}
-          placeholder="Ex. World + émergents"
-          className="h-8"
-        />
-      </div>
+      {includeName && (
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="strategy-name"
+            className="text-xs text-muted-foreground"
+          >
+            Nom de la stratégie
+          </Label>
+          <Input
+            id="strategy-name"
+            value={values.name}
+            onChange={(event) => onChange({ name: event.target.value })}
+            placeholder="Ex. World + émergents"
+            className="h-8"
+          />
+        </div>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

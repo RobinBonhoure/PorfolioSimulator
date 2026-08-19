@@ -40,6 +40,28 @@ export interface AnalyticsResult {
   /** Rendements du portefeuille par année civile. */
   annualReturns: PeriodExtreme[];
   rollingReturns: RollingReturnPoint[];
+  /** Rendements mensuels du portefeuille, de fin de mois à fin de mois.
+   *  Matière première du rééchantillonnage de la projection. */
+  monthlyPortfolioReturns: number[];
+}
+
+/**
+ * Rendements du portefeuille d'une fin de mois à la suivante.
+ *
+ * Le dernier est écarté : la période s'arrête à la dernière cotation
+ * disponible, presque jamais en fin de mois, et ce mois tronqué produirait un
+ * rendement anormalement faible. Inoffensif dans une moyenne, il ne l'est pas
+ * dans un rééchantillonnage, où il serait rejoué comme un mois entier.
+ */
+export function buildMonthlyPortfolioReturns(
+  index: readonly number[],
+  calendar: readonly IsoDate[],
+): number[] {
+  const monthEnds = monthEndIndices(calendar);
+  if (monthEnds.length < 3) return [];
+
+  const complete = monthEnds.slice(0, -1);
+  return monthlySeriesReturns(index, complete);
 }
 
 /** Indices du dernier jour coté de chaque mois du calendrier. */

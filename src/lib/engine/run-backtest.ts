@@ -1,6 +1,7 @@
 import {
   buildAnnualReturns,
   buildCorrelationMatrix,
+  buildMonthlyPortfolioReturns,
   buildRollingReturns,
   type AnalyticsResult,
 } from "./analytics";
@@ -560,6 +561,7 @@ export function runBacktest(input: EngineInput): BacktestResult {
     ),
     annualReturns: buildAnnualReturns(index, calendar),
     rollingReturns: buildRollingReturns(index, calendar),
+    monthlyPortfolioReturns: buildMonthlyPortfolioReturns(index, calendar),
   };
 
   return { metrics, series, analytics, youngAssets, usedProxyData, assetIds };

@@ -33,28 +33,19 @@ export async function seedAssets(): Promise<{
       aliases: row.aliases as string[] | undefined,
     });
 
+    // Les colonnes mises à jour sont dérivées de l'objet du seed plutôt
+    // qu'énumérées à la main. Une liste manuelle se désynchronise dès qu'on
+    // ajoute un champ : la colonne s'insère correctement sur une base vide, et
+    // reste silencieusement vide sur une base déjà peuplée — le seed annonce
+    // alors « 38 actifs mis à jour » sans avoir écrit la nouvelle donnée.
+    const values = { ...row, searchText };
+
     await db
       .insert(assets)
-      .values({ ...row, searchText })
+      .values(values)
       .onConflictDoUpdate({
         target: assets.tickerYahoo,
-        set: {
-          isin: row.isin ?? null,
-          name: row.name,
-          shortLabel: row.shortLabel,
-          aliases: row.aliases,
-          type: row.type,
-          peaEligible: row.peaEligible ?? null,
-          ter: row.ter ?? null,
-          currency: row.currency,
-          sectorBreakdown: row.sectorBreakdown ?? null,
-          geoBreakdown: row.geoBreakdown ?? null,
-          inceptionDate: row.inceptionDate ?? null,
-          isCatalog: row.isCatalog ?? true,
-          dataPartial: row.dataPartial ?? false,
-          searchText,
-          updatedAt: new Date(),
-        },
+        set: { ...values, updatedAt: new Date() },
       });
     upserted += 1;
   }

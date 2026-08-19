@@ -42,6 +42,14 @@ export const assets = pgTable(
     /** Frais courants annuels en fraction (0.0038 = 0,38 %). */
     ter: numeric("ter", { precision: 8, scale: 6 }),
     currency: text("currency").notNull(),
+    /** Indice répliqué, pour les supports indiciels : « MSCI World », « S&P 500 ».
+     *  `null` pour une action, une crypto ou un métal, qui ne suivent rien.
+     *
+     *  Sert à rapprocher les supports interchangeables. Trois ETF peuvent
+     *  répliquer le même indice, être tous éligibles au PEA, et facturer du
+     *  simple au double : c'est le seul arbitrage réellement à la main de
+     *  l'investisseur, encore faut-il qu'il voie les trois côte à côte. */
+    trackedIndex: text("tracked_index"),
     /** Répartition sectorielle en pourcentages : { "Technologie": 24.5, ... }. */
     sectorBreakdown: jsonb("sector_breakdown").$type<Record<string, number>>(),
     geoBreakdown: jsonb("geo_breakdown").$type<Record<string, number>>(),

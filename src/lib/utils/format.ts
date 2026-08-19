@@ -25,6 +25,41 @@ export function formatEur(value: number, precise = false): string {
   return precise ? eurPreciseFormatter.format(value) : eurFormatter.format(value);
 }
 
+/**
+ * Montant abrégé pour les axes : « 5,8 M€ », « 231 k€ ».
+ *
+ * Une projection à trente ans traverse plusieurs ordres de grandeur ; écrire
+ * « 5 820 355 € » sur une graduation force un axe démesurément large et rend
+ * les étiquettes illisibles.
+ */
+export function formatEurCompact(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "−" : "";
+  const round = (x: number, digits: number) =>
+    x.toLocaleString("fr-FR", { maximumFractionDigits: digits });
+
+  if (abs >= 1_000_000) return `${sign}${round(abs / 1_000_000, 1)} M€`;
+  if (abs >= 1_000) return `${sign}${round(abs / 1_000, abs >= 10_000 ? 0 : 1)} k€`;
+  return `${sign}${round(abs, 0)} €`;
+}
+
+/** Montant signé : « +71 774 € », « −3 200 € ». */
+export function formatSignedEur(value: number, precise = false): string {
+  if (!Number.isFinite(value)) return "—";
+  return value > 0 ? `+${formatEur(value, precise)}` : formatEur(value, precise);
+}
+
+/** Nombre simple en typographie française : 617,7 et non 617.7. */
+export function formatNumber(value: number, digits = 1): string {
+  if (!Number.isFinite(value)) return "—";
+  return value.toLocaleString("fr-FR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
 /** Fraction vers pourcentage : 0,0638 → « 6,38 % ». */
 export function formatPercent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
