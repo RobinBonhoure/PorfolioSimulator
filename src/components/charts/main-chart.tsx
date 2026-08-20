@@ -56,12 +56,18 @@ export function MainChart({
   assets,
   benchmarkLabel,
   logScale,
+  realMode = false,
 }: {
   mode: MainChartMode;
   series: BacktestSeries;
   assets: ResultAssetInfo[];
   benchmarkLabel: string | null;
   logScale: boolean;
+  /** Affiche la courbe en euros constants. Le moteur fournit la série déjà
+   *  déflatée : la vue se contente de choisir laquelle tracer. La référence,
+   *  elle, reste nominale — elle sert à situer la stratégie face à un indice,
+   *  pas à mesurer un pouvoir d'achat. */
+  realMode?: boolean;
 }) {
   const palette = useMemo(
     () => buildAssetPalette(assets.map((a) => a.id)),
@@ -72,8 +78,10 @@ export function MainChart({
     return series.portfolio.map((point, index) => {
       const row: ChartPoint = {
         date: point.date,
-        value: point.value,
-        invested: point.invested,
+        value: realMode ? (point.realValue ?? point.value) : point.value,
+        invested: realMode
+          ? (point.realInvested ?? point.invested)
+          : point.invested,
         benchmark: series.benchmark?.[index]?.value ?? null,
         hasProxyData: point.hasProxyData,
       };
@@ -93,7 +101,7 @@ export function MainChart({
 
       return row;
     });
-  }, [series, assets, mode]);
+  }, [series, assets, mode, realMode]);
 
   /** Bornes des plages reconstituées par proxy, pour les hachurer. */
   const proxyRanges = useMemo(() => {

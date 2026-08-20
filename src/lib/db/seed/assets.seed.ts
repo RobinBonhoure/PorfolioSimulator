@@ -56,6 +56,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "S&P 500 — SPY (proxy)",
     aliases: ["sp500 proxy", "spy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "S&P 500",
     peaEligible: false,
     ter: "0.000945",
@@ -71,6 +72,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Marchés émergents — EEM (proxy)",
     aliases: ["emerging proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Emerging Markets",
     peaEligible: false,
     ter: "0.0070",
@@ -86,6 +88,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Nasdaq 100 — QQQ (proxy)",
     aliases: ["nasdaq proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "Nasdaq / tech américaine",
     peaEligible: false,
     ter: "0.0020",
@@ -101,6 +104,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Monde entier — VT (proxy)",
     aliases: ["all world proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "FTSE All-World",
     peaEligible: false,
     ter: "0.0006",
@@ -116,6 +120,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Or — GC=F (proxy)",
     aliases: ["gold proxy"],
     type: "metal",
+    assetClass: "commodity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -130,6 +135,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Argent — SI=F (proxy)",
     aliases: ["silver proxy"],
     type: "metal",
+    assetClass: "commodity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -144,6 +150,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Japon — EWJ (proxy)",
     aliases: ["japan proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Japan",
     peaEligible: false,
     ter: "0.0050",
@@ -159,6 +166,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Monde hors USA — VEU (proxy)",
     aliases: ["world ex us proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "FTSE All-World ex US",
     peaEligible: false,
     ter: "0.0004",
@@ -174,6 +182,7 @@ const PROXY_ASSETS: SeedAsset[] = [
     shortLabel: "Petites capitalisations — IWM (proxy)",
     aliases: ["small cap proxy"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "Russell 2000",
     peaEligible: false,
     ter: "0.0019",
@@ -441,6 +450,28 @@ const SMALL_CAP_GEO = {
   Autres: 13,
 };
 
+// Répartition des émetteurs de dette, en pourcentage de l'encours. Indicative
+// et arrondie, comme les autres décompositions de ce fichier.
+const EURO_GOVT_GEO = {
+  France: 25,
+  Italie: 23,
+  Allemagne: 20,
+  Espagne: 15,
+  Belgique: 5,
+  "Pays-Bas": 5,
+  Autres: 7,
+};
+
+const EURO_CORP_GEO = {
+  France: 21,
+  "États-Unis": 19,
+  Allemagne: 13,
+  "Pays-Bas": 11,
+  "Royaume-Uni": 8,
+  Espagne: 7,
+  Autres: 21,
+};
+
 /** Une action expose un secteur et un pays uniques. */
 const stock = (sector: string, country: string) => ({
   sectorBreakdown: { [sector]: 100 },
@@ -460,6 +491,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI World — CW8",
     aliases: ["world", "msci world", "cw8", "monde", "amundi world"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI World",
     peaEligible: true,
     ter: "0.0038",
@@ -475,6 +507,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI World — WPEA",
     aliases: ["world", "msci world", "wpea", "ishares world pea", "monde"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI World",
     peaEligible: true,
     // Abaissé de 0,25 % à 0,20 % par BlackRock fin 2025.
@@ -492,6 +525,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI World — DCAM",
     aliases: ["world", "msci world", "dcam", "amundi pea monde", "monde"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI World",
     peaEligible: true,
     ter: "0.0020",
@@ -510,6 +544,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "S&P 500 — PE500",
     aliases: ["sp500", "s&p 500", "pe500", "500", "amundi sp500"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "S&P 500",
     peaEligible: true,
     ter: "0.0012",
@@ -526,6 +561,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "S&P 500 — ESE",
     aliases: ["sp500", "s&p 500", "ese", "bnp sp500"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "S&P 500",
     peaEligible: true,
     ter: "0.0014",
@@ -542,6 +578,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "S&P 500 — SXR8 / CSPX",
     aliases: ["sp500", "s&p 500", "sxr8", "cspx", "ishares core sp500"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "S&P 500",
     peaEligible: false,
     ter: "0.0007",
@@ -560,6 +597,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Marchés émergents — PAEEM",
     aliases: ["emergents", "émergents", "emerging", "paeem", "msci emerging"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Emerging Markets",
     peaEligible: true,
     ter: "0.0020", // TER non confirmé auprès de l'émetteur.
@@ -576,6 +614,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Tech US — PANX",
     aliases: ["nasdaq", "tech", "panx", "us tech", "technologie"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "Nasdaq / tech américaine",
     peaEligible: true,
     ter: "0.0030", // TER non confirmé auprès de l'émetteur.
@@ -594,6 +633,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI World — IWDA",
     aliases: ["world", "msci world", "iwda", "eunl", "ishares core world"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI World",
     peaEligible: false,
     ter: "0.0020",
@@ -609,6 +649,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "FTSE All-World — VWCE",
     aliases: ["all world", "vwce", "vanguard", "ftse all world", "monde"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "FTSE All-World",
     peaEligible: false,
     ter: "0.0022",
@@ -632,6 +673,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Stoxx Europe 600 — MEUD",
     aliases: ["europe", "stoxx", "stoxx 600", "meud", "europe 600"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "Stoxx Europe 600",
     peaEligible: true,
     ter: "0.0007",
@@ -648,6 +690,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI Europe — PCEU",
     aliases: ["europe", "msci europe", "pceu", "pea europe"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Europe",
     peaEligible: true,
     ter: "0.0015",
@@ -664,6 +707,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "EURO STOXX 50 — C50",
     aliases: ["zone euro", "euro stoxx", "eurostoxx", "c50", "eurozone"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "EURO STOXX 50",
     peaEligible: true,
     ter: "0.0005", // TER non confirmé auprès de l'émetteur.
@@ -679,6 +723,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "CAC 40 — CAC",
     aliases: ["cac", "cac 40", "france", "paris"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "CAC 40",
     peaEligible: true,
     ter: "0.0025", // TER non confirmé auprès de l'émetteur.
@@ -694,6 +739,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Stoxx Europe 600 — EXSA",
     aliases: ["europe", "stoxx 600", "exsa", "ishares europe"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "Stoxx Europe 600",
     peaEligible: false,
     ter: "0.0020", // TER non confirmé auprès de l'émetteur.
@@ -709,6 +755,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "MSCI Europe — IMEU",
     aliases: ["europe", "msci europe", "imeu"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Europe",
     peaEligible: false,
     ter: "0.0012", // TER non confirmé auprès de l'émetteur.
@@ -726,6 +773,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Marchés émergents — AEEM",
     aliases: ["emergents", "émergents", "emerging", "aeem"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Emerging Markets",
     peaEligible: false,
     ter: "0.0020",
@@ -742,6 +790,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Émergents (IMI) — EMIM",
     aliases: ["emergents", "émergents", "emerging", "emim", "eimi", "imi"],
     type: "etf",
+    assetClass: "equity",
     // L'indice IMI ajoute les petites capitalisations à l'univers émergent :
     // proche du MSCI Emerging Markets, mais ce n'est pas le même indice.
     trackedIndex: "MSCI Emerging Markets IMI",
@@ -760,6 +809,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Asie émergente — PAASI",
     aliases: ["asie", "asie emergente", "chine", "inde", "paasi"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Emerging Asia",
     peaEligible: true,
     ter: "0.0030",
@@ -784,6 +834,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Japon (TOPIX) — PTPXE",
     aliases: ["japon", "japan", "topix", "ptpxe", "pea japon"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "TOPIX",
     peaEligible: true,
     ter: "0.0020",
@@ -800,6 +851,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Japon (IMI) — IJPA",
     aliases: ["japon", "japan", "ijpa"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI Japan IMI",
     peaEligible: false,
     ter: "0.0015", // TER non confirmé auprès de l'émetteur.
@@ -818,6 +870,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Monde hors USA — EXUS",
     aliases: ["monde hors usa", "world ex us", "ex usa", "exus"],
     type: "etf",
+    assetClass: "equity",
     // Le complément exact d'un ETF S&P 500 : permet de doser soi-même le poids
     // américain plutôt que de subir les 72 % d'un MSCI World.
     trackedIndex: "MSCI World ex USA",
@@ -836,6 +889,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Petites capitalisations — IUSN",
     aliases: ["small cap", "petites capitalisations", "iusn"],
     type: "etf",
+    assetClass: "equity",
     trackedIndex: "MSCI World Small Cap",
     peaEligible: false,
     ter: "0.0035", // TER non confirmé auprès de l'émetteur.
@@ -856,6 +910,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Or physique — GOLD",
     aliases: ["or", "gold", "or physique", "métaux"],
     type: "metal",
+    assetClass: "commodity",
     peaEligible: false,
     ter: "0.0012",
     // Coté à Paris mais libellé en dollars : la conversion FX s'applique.
@@ -872,6 +927,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Argent physique — PHAG",
     aliases: ["argent", "silver", "phag", "métaux"],
     type: "metal",
+    assetClass: "commodity",
     peaEligible: false,
     ter: "0.0049",
     currency: "USD",
@@ -889,6 +945,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Bitcoin — BTC",
     aliases: ["bitcoin", "btc", "crypto"],
     type: "crypto",
+    assetClass: "crypto",
     peaEligible: false,
     ter: null,
     currency: "EUR",
@@ -903,6 +960,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Ethereum — ETH",
     aliases: ["ethereum", "eth", "crypto"],
     type: "crypto",
+    assetClass: "crypto",
     peaEligible: false,
     ter: null,
     currency: "EUR",
@@ -919,6 +977,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "LVMH — MC",
     aliases: ["lvmh", "luxe", "moet"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -932,6 +991,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "TotalEnergies — TTE",
     aliases: ["total", "totalenergies", "pétrole"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -945,6 +1005,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Air Liquide — AI",
     aliases: ["air liquide", "gaz industriels"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -958,6 +1019,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Sanofi — SAN",
     aliases: ["sanofi", "pharma", "santé"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -971,6 +1033,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "L'Oréal — OR",
     aliases: ["loreal", "l'oréal", "cosmétiques"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -984,6 +1047,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Schneider Electric — SU",
     aliases: ["schneider", "electric"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -997,6 +1061,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Airbus — AIR",
     aliases: ["airbus", "aéronautique"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1010,6 +1075,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Hermès — RMS",
     aliases: ["hermes", "hermès", "luxe"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1023,6 +1089,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Vinci — DG",
     aliases: ["vinci", "construction", "concessions"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1036,6 +1103,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "BNP Paribas — BNP",
     aliases: ["bnp", "banque", "paribas"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1049,6 +1117,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "ASML — ASML",
     aliases: ["asml", "semi-conducteurs", "lithographie"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1062,6 +1131,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "SAP — SAP",
     aliases: ["sap", "logiciel", "allemagne"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: true,
     ter: null,
     currency: "EUR",
@@ -1077,6 +1147,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Apple — AAPL",
     aliases: ["apple", "aapl"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -1090,6 +1161,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Microsoft — MSFT",
     aliases: ["microsoft", "msft"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -1103,6 +1175,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "NVIDIA — NVDA",
     aliases: ["nvidia", "nvda", "semi-conducteurs"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -1116,6 +1189,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Amazon — AMZN",
     aliases: ["amazon", "amzn"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -1129,6 +1203,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Alphabet — GOOGL",
     aliases: ["google", "alphabet", "googl"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
@@ -1142,11 +1217,137 @@ const CATALOG_ASSETS: SeedAsset[] = [
     shortLabel: "Berkshire Hathaway — BRK.B",
     aliases: ["berkshire", "buffett", "brk"],
     type: "stock",
+    assetClass: "equity",
     peaEligible: false,
     ter: null,
     currency: "USD",
     ...stock("Finance", "États-Unis"),
     inceptionDate: "1996-05-09",
+  },
+
+  // --- Supports de taux ----------------------------------------------------
+  //
+  // Sans eux, un profil prudent n'a aucun levier : baisser la part actions
+  // n'aurait nulle part où mettre le reste. Ce sont ces lignes qui rendent
+  // possible une gamme allant du défensif au dynamique.
+  //
+  // Aucun n'est éligible au PEA — les ETF obligataires en sont exclus par
+  // construction, faute d'actions européennes en sous-jacent.
+  //
+  // Vérifications faites en août 2026 : chaque symbole a été interrogé chez
+  // Yahoo, et sa **volatilité réalisée a été calculée** pour confirmer sa
+  // nature. Le contrôle n'est pas superflu — Yahoo intervertit régulièrement
+  // les libellés des lignes iShares cotées à Xetra. Une obligataire ressort
+  // entre 1 et 6 % de volatilité annualisée là où le MSCI World est à 14,4 % :
+  // la signature ne trompe pas, contrairement au nom.
+  //
+  // Les TER viennent de `fundProfile.feesExpensesInvestment` chez Yahoo, source
+  // recoupée sur deux lignes connues du catalogue : CW8 y ressort à 0,38 % et
+  // WPEA à 0,20 %, exactement les valeurs curatées ici.
+  //
+  // Pas de décomposition sectorielle : elle n'a pas de sens pour de la dette.
+  // La répartition géographique est celle des émetteurs.
+  {
+    tickerYahoo: "EUNH.DE",
+    isin: "IE00B4WXJJ64",
+    name: "iShares Core € Govt Bond UCITS ETF",
+    shortLabel: "Obligations d'État € — EUNH",
+    aliases: [
+      "obligations",
+      "obligation",
+      "etat",
+      "souverain",
+      "govt bond",
+      "eunh",
+      "taux",
+    ],
+    type: "etf",
+    assetClass: "bond",
+    trackedIndex: "Obligations d'État zone euro",
+    peaEligible: false,
+    ter: "0.0009",
+    currency: "EUR",
+    sectorBreakdown: null,
+    geoBreakdown: EURO_GOVT_GEO,
+    // Volatilité mesurée 5,0 %, baisse maximale −22,4 % (choc de taux 2022).
+    inceptionDate: "2009-04-17",
+  },
+  {
+    tickerYahoo: "IBGS.AS",
+    isin: "IE00B14X4Q57",
+    name: "iShares € Govt Bond 1-3yr UCITS ETF",
+    shortLabel: "Obligations d'État € 1-3 ans — IBGS",
+    aliases: [
+      "obligations courtes",
+      "court terme",
+      "1-3 ans",
+      "ibgs",
+      "peu risque",
+    ],
+    type: "etf",
+    assetClass: "bond",
+    trackedIndex: "Obligations d'État zone euro 1-3 ans",
+    peaEligible: false,
+    ter: "0.002",
+    currency: "EUR",
+    sectorBreakdown: null,
+    geoBreakdown: EURO_GOVT_GEO,
+    // Volatilité mesurée 1,8 %, baisse maximale −6,2 % : la ligne la plus
+    // stable du catalogue, et l'historique le plus long de cette section.
+    inceptionDate: "2008-01-02",
+  },
+  {
+    tickerYahoo: "EUN5.DE",
+    isin: "IE00B3F81R35",
+    name: "iShares Core € Corp Bond UCITS ETF",
+    shortLabel: "Obligations d'entreprise € — EUN5",
+    aliases: ["obligations entreprise", "corporate", "credit", "eun5"],
+    type: "etf",
+    assetClass: "bond",
+    trackedIndex: "Obligations d'entreprise zone euro",
+    peaEligible: false,
+    ter: "0.002",
+    currency: "EUR",
+    sectorBreakdown: null,
+    geoBreakdown: EURO_CORP_GEO,
+    // Volatilité mesurée 4,1 %, baisse maximale −17,3 %.
+    inceptionDate: "2009-05-26",
+  },
+  {
+    tickerYahoo: "IBCI.DE",
+    isin: "IE00B0M62X26",
+    name: "iShares € Inflation Linked Govt Bond UCITS ETF",
+    shortLabel: "Obligations indexées inflation — IBCI",
+    aliases: ["inflation", "indexee", "tips", "oati", "ibci"],
+    type: "etf",
+    assetClass: "bond",
+    trackedIndex: "Obligations d'État zone euro indexées inflation",
+    peaEligible: false,
+    ter: "0.0009",
+    currency: "EUR",
+    sectorBreakdown: null,
+    geoBreakdown: { France: 47, Italie: 27, Allemagne: 15, Espagne: 11 },
+    // Volatilité mesurée 5,9 %, baisse maximale −16,4 %.
+    inceptionDate: "2009-01-14",
+  },
+  {
+    tickerYahoo: "ERNE.AS",
+    isin: "IE00BCRY6003",
+    name: "iShares € Ultrashort Bond UCITS ETF",
+    shortLabel: "Très court terme € — ERNE",
+    aliases: ["monetaire", "ultra court", "liquidites", "cash", "erne"],
+    type: "etf",
+    assetClass: "money_market",
+    trackedIndex: "Obligations € très court terme",
+    peaEligible: false,
+    ter: "0.0009",
+    currency: "EUR",
+    sectorBreakdown: null,
+    geoBreakdown: EURO_CORP_GEO,
+    // Volatilité mesurée 0,9 %, baisse maximale −4,1 % : le substitut de
+    // liquidités du catalogue. Ce n'est pas un fonds monétaire au sens
+    // réglementaire, mais son comportement en tient lieu.
+    inceptionDate: "2013-11-13",
   },
 ];
 

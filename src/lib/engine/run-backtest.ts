@@ -40,6 +40,7 @@ import {
   type FeesConfig,
   type IsoDate,
   type PortfolioDayPoint,
+  type RealMetrics,
   type RebalancingPeriod,
   type YoungAssetWarning,
 } from "./types";
@@ -459,14 +460,8 @@ export function runBacktest(input: EngineInput): BacktestResult {
       new Date(`${startDate}T00:00:00Z`).getTime()) /
     (365.25 * 86_400_000);
 
-  const growthFactor = index[index.length - 1];
-  const cagr = annualizedReturn(growthFactor, effectiveYears);
-  const volatility = annualizedVolatility(returns);
-  const drawdown = maxDrawdown(index, calendar);
   const riskFreeRate = getAverageRiskFreeRate(calendar);
-
-  const months = bestAndWorst(monthlyReturns(index, calendar));
-  const years = bestAndWorst(yearlyReturns(index, calendar));
+  const nominal = returnMetrics(returns, calendar, effectiveYears, riskFreeRate);
 
   const finalValue = run.values[run.values.length - 1];
   const totalInvested = run.invested[run.invested.length - 1];
@@ -489,28 +484,24 @@ export function runBacktest(input: EngineInput): BacktestResult {
     fees: run.fees,
     feeImpact: grossRun.values[grossRun.values.length - 1] - finalValue,
     totalReturn: totalInvested > 0 ? finalValue / totalInvested - 1 : 0,
-    cagr,
-    volatility,
-    drawdown,
-    bestMonth: months.best,
-    worstMonth: months.worst,
-    bestYear: years.best,
-    worstYear: years.worst,
-    sharpe: sharpeRatio(cagr, volatility, riskFreeRate),
-    sortino: sortinoRatio(returns, cagr, riskFreeRate),
-    calmar: calmarRatio(cagr, drawdown.maxDrawdown),
+    ...nominal,
   };
 
-  if (params.realReturns && input.inflation?.length) {
-    const deflators = buildDeflators(calendar, input.inflation);
-    const realFinal = finalValue * deflators[deflators.length - 1];
-    const realGrowth = growthFactor * deflators[deflators.length - 1];
+  const deflators =
+    params.realReturns && input.inflation?.length
+      ? buildDeflators(calendar, input.inflation)
+      : null;
 
-    metrics.real = {
-      finalValue: realFinal,
-      totalReturn: totalInvested > 0 ? realFinal / totalInvested - 1 : 0,
-      cagr: annualizedReturn(realGrowth, effectiveYears),
-    };
+  if (deflators) {
+    metrics.real = realMetricsOf({
+      returns,
+      calendar,
+      deflators,
+      contributions: run.contributions,
+      finalValue,
+      effectiveYears,
+      riskFreeRate,
+    });
   }
 
   if (params.taxation) {
@@ -529,11 +520,29 @@ export function runBacktest(input: EngineInput): BacktestResult {
   const assetIds = assets.map((a) => a.id);
   const usedProxyData = prepared.some((p) => p.isProxy.some(Boolean));
 
+  // Le cumul versé en euros constants se construit jour après jour, chaque
+  // versement étant déflaté à sa propre date — le déflater en bloc au taux du
+  // jour courant traiterait les versements anciens comme s'ils étaient récents.
+  const realInvestedRunning: number[] = [];
+  if (deflators) {
+    let total = 0;
+    for (let i = 0; i < calendar.length; i += 1) {
+      total += run.contributions[i] * deflators[i];
+      realInvestedRunning.push(total);
+    }
+  }
+
   const portfolio: PortfolioDayPoint[] = calendar.map((date, i) => ({
     date,
     value: run.values[i],
     invested: run.invested[i],
     hasProxyData: prepared.some((p) => p.isProxy[i]),
+    ...(deflators
+      ? {
+          realValue: run.values[i] * deflators[i],
+          realInvested: realInvestedRunning[i],
+        }
+      : {}),
   }));
 
   const byAsset: AssetSeriesPoint[] = calendar.map((date, i) => {
@@ -596,4 +605,101 @@ function shiftYears(date: IsoDate, years: number): IsoDate {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCFullYear(d.getUTCFullYear() + years);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Bloc de métriques dérivé d'une série de rendements.
+ *
+ * Isolé parce qu'il est appliqué deux fois : une fois aux rendements nominaux,
+ * une fois aux rendements déflatés. Les recopier à l'identique pour la version
+ * réelle aurait garanti qu'ils divergent au premier ajustement.
+ */
+function returnMetrics(
+  returns: readonly number[],
+  calendar: readonly IsoDate[],
+  effectiveYears: number,
+  riskFreeRate: number,
+) {
+  const index = cumulativeIndex(returns);
+  const cagr = annualizedReturn(index[index.length - 1], effectiveYears);
+  const volatility = annualizedVolatility(returns);
+  const drawdown = maxDrawdown(index, calendar);
+  const months = bestAndWorst(monthlyReturns(index, calendar));
+  const years = bestAndWorst(yearlyReturns(index, calendar));
+
+  return {
+    cagr,
+    volatility,
+    drawdown,
+    bestMonth: months.best,
+    worstMonth: months.worst,
+    bestYear: years.best,
+    worstYear: years.worst,
+    sharpe: sharpeRatio(cagr, volatility, riskFreeRate),
+    sortino: sortinoRatio(returns, cagr, riskFreeRate),
+    calmar: calmarRatio(cagr, drawdown.maxDrawdown),
+  };
+}
+
+/**
+ * Le portefeuille en euros constants.
+ *
+ * L'indice cumulé est déflaté point par point, puis la chaîne de rendements est
+ * reconstruite à partir de lui — et non l'inverse. C'est ce qui donne une
+ * volatilité et une baisse maximale réelles cohérentes : déflater la seule
+ * valeur finale laisserait ces deux grandeurs inchangées alors que l'inflation
+ * creuse bel et bien les baisses.
+ *
+ * Le taux sans risque est lui aussi ramené en termes réels, sinon les ratios de
+ * Sharpe et de Sortino seraient comparés à une rémunération nominale et
+ * ressortiraient artificiellement mauvais.
+ */
+function realMetricsOf(input: {
+  returns: readonly number[];
+  calendar: readonly IsoDate[];
+  deflators: readonly number[];
+  contributions: readonly number[];
+  finalValue: number;
+  effectiveYears: number;
+  riskFreeRate: number;
+}): RealMetrics {
+  const { deflators, effectiveYears } = input;
+  const terminal = deflators[deflators.length - 1];
+
+  const nominalIndex = cumulativeIndex(input.returns);
+  const realIndex = nominalIndex.map((value, i) => value * deflators[i]);
+
+  const realReturns: number[] = [];
+  for (let i = 1; i < realIndex.length; i += 1) {
+    const previous = realIndex[i - 1];
+    realReturns.push(previous > 0 ? realIndex[i] / previous - 1 : 0);
+  }
+
+  // Inflation annualisée constatée : l'inverse du déflateur terminal, ramené à
+  // l'année. Sur dix-sept ans à 2 % l'an, le déflateur vaut environ 0,71.
+  const annualInflation =
+    effectiveYears > 0 && terminal > 0
+      ? Math.pow(1 / terminal, 1 / effectiveYears) - 1
+      : 0;
+
+  const realRiskFree = (1 + input.riskFreeRate) / (1 + annualInflation) - 1;
+
+  // Chaque versement est ramené en euros du premier jour, à sa propre date.
+  // Déflater le cumul au taux terminal traiterait le versement du mois dernier
+  // comme s'il avait été fait au début, et sous-estimerait le capital engagé.
+  const realInvested = input.contributions.reduce(
+    (total, amount, i) => total + amount * deflators[i],
+    0,
+  );
+
+  const realFinal = input.finalValue * terminal;
+
+  return {
+    finalValue: realFinal,
+    totalInvested: realInvested,
+    totalGain: realFinal - realInvested,
+    totalReturn: realInvested > 0 ? realFinal / realInvested - 1 : 0,
+    annualInflation,
+    ...returnMetrics(realReturns, input.calendar, effectiveYears, realRiskFree),
+  };
 }

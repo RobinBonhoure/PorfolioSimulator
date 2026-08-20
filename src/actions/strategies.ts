@@ -52,6 +52,11 @@ async function writeAssets(
 
 export async function createStrategy(
   input: StrategyFormValues,
+  /** Arbitrage sur les actifs jeunes, transmis par le parcours guidé : les
+   *  allocations qu'il propose sont chiffrées avec l'historique complété par
+   *  proxy, et ouvrir la stratégie créée sur une période de deux ans
+   *  contredirait les chiffres qui ont motivé le choix. */
+  youngAssetResolution: YoungAssetResolution | null = null,
 ): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
 
@@ -68,7 +73,7 @@ export async function createStrategy(
       userId: user.id,
       name: values.name,
       description: values.description ?? null,
-      params: toEngineParams(values),
+      params: toEngineParams(values, youngAssetResolution),
     })
     .returning({ id: strategies.id });
 

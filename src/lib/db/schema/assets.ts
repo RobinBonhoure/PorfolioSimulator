@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   date,
   index,
@@ -20,6 +21,24 @@ export const assetTypeEnum = pgEnum("asset_type", [
   "metal",
 ]);
 
+/**
+ * Nature économique du sous-jacent, distincte de l'enveloppe du produit.
+ *
+ * `type` dit ce qu'on achète (un ETF, une action) ; `assetClass` dit à quoi on
+ * est exposé. Les deux sont nécessaires et ne se déduisent pas l'un de l'autre :
+ * un ETF actions et un ETF obligataire partagent le même `type` tout en ayant
+ * des comportements opposés, et c'est cette distinction — pas la forme
+ * juridique — qui commande la construction d'une allocation par niveau de
+ * risque.
+ */
+export const assetClassEnum = pgEnum("asset_class", [
+  "equity",
+  "bond",
+  "money_market",
+  "commodity",
+  "crypto",
+]);
+
 export const assets = pgTable(
   "assets",
   {
@@ -36,6 +55,11 @@ export const assets = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     type: assetTypeEnum("type").notNull(),
+    /** `null` signifie « non classé » : c'est le cas des actifs ajoutés hors
+     *  catalogue via la recherche Yahoo, dont on ignore la nature. Les
+     *  allocations construites automatiquement les écartent plutôt que de leur
+     *  prêter un comportement. */
+    assetClass: assetClassEnum("asset_class"),
     /** Donnée curatée : aucune API ne fournit l'éligibilité PEA.
      *  `null` signifie « inconnu » (actif ajouté hors catalogue). */
     peaEligible: boolean("pea_eligible"),
@@ -50,6 +74,14 @@ export const assets = pgTable(
      *  simple au double : c'est le seul arbitrage réellement à la main de
      *  l'investisseur, encore faut-il qu'il voie les trois côte à côte. */
     trackedIndex: text("tracked_index"),
+    /** Volume moyen échangé sur trois mois, tel que publié par Yahoo.
+     *
+     *  Sert d'indicateur de liquidité au moment de départager deux supports
+     *  répliquant le même indice. C'est une mesure grossière — elle ne porte que
+     *  sur une place de cotation et ignore le carnet d'ordres — mais un écart
+     *  d'un facteur cent entre deux lignes reste un signal réel. Rafraîchie par
+     *  `scripts/refresh-liquidity.ts`, `null` tant qu'elle ne l'a pas été. */
+    avgVolume: bigint("avg_volume", { mode: "number" }),
     /** Répartition sectorielle en pourcentages : { "Technologie": 24.5, ... }. */
     sectorBreakdown: jsonb("sector_breakdown").$type<Record<string, number>>(),
     geoBreakdown: jsonb("geo_breakdown").$type<Record<string, number>>(),

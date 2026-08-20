@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/strategies", label: "Mes stratégies" },
-  { href: "/strategies/new", label: "Nouvelle stratégie" },
+  { href: "/strategies/guide", label: "Être guidé" },
+  { href: "/strategies/new", label: "Composer" },
   { href: "/compare", label: "Comparer" },
 ];
 

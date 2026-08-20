@@ -34,6 +34,7 @@ const fxKey = (currency: string) => `fx:${currency.toUpperCase()}`;
 interface FreshnessRow {
   lastFetchedAt: Date;
   lastDataDate: string | null;
+  lastError: string | null;
 }
 
 async function readFreshness(key: string): Promise<FreshnessRow | null> {
@@ -41,6 +42,7 @@ async function readFreshness(key: string): Promise<FreshnessRow | null> {
     .select({
       lastFetchedAt: dataFetchLog.lastFetchedAt,
       lastDataDate: dataFetchLog.lastDataDate,
+      lastError: dataFetchLog.lastError,
     })
     .from(dataFetchLog)
     .where(eq(dataFetchLog.seriesKey, key))
@@ -68,10 +70,30 @@ async function writeFreshness(
     });
 }
 
+/**
+ * Une série sans aucune donnée n'est jamais « fraîche ».
+ *
+ * Le report d'un échec écrit `lastFetchedAt` au moment de la tentative. Jugée
+ * sur le seul âge, une série qui a échoué du premier coup passait donc pour à
+ * jour pendant vingt-quatre heures, et `ensureAssetPrices` renvoyait
+ * `fromCache: true` sur un cache vide sans rien signaler : l'actif devenait
+ * silencieusement inexploitable pour la journée, à cause d'une seule coupure
+ * réseau.
+ *
+ * Quand il y a des données en cache, l'échec ne coûte rien : on sert la veille
+ * et on réessaiera au prochain cycle. Quand il n'y en a pas, il faut réessayer —
+ * mais pas à chaque appel, sans quoi le recalcul automatique de l'éditeur
+ * frapperait Yahoo à chaque modification de paramètre sur un actif délisté.
+ */
+const EMPTY_RETRY_MINUTES = 5;
+
 function isStale(row: FreshnessRow | null): boolean {
   if (!row) return true;
-  const ageHours = (Date.now() - row.lastFetchedAt.getTime()) / 3_600_000;
-  return ageHours >= FRESHNESS_HOURS;
+
+  const ageMinutes = (Date.now() - row.lastFetchedAt.getTime()) / 60_000;
+  if (row.lastDataDate === null) return ageMinutes >= EMPTY_RETRY_MINUTES;
+
+  return ageMinutes / 60 >= FRESHNESS_HOURS;
 }
 
 async function insertInBatches<T>(
@@ -109,6 +131,16 @@ export async function ensureAssetPrices(
   const freshness = await readFreshness(key);
 
   if (!isStale(freshness)) {
+    // Cache vide et échec trop récent pour réessayer : il faut remonter
+    // l'erreur. Annoncer un cache utilisable alors qu'il ne contient rien
+    // laisserait le moteur calculer sur une série vide.
+    if (freshness?.lastDataDate === null) {
+      throw new YahooDataError(
+        "no-data",
+        ticker,
+        freshness.lastError ?? `Aucune cotation disponible pour ${ticker}.`,
+      );
+    }
     return { fetched: 0, fromCache: true };
   }
 
@@ -188,6 +220,15 @@ export async function ensureFxSeries(
   const freshness = await readFreshness(key);
 
   if (!isStale(freshness)) {
+    // Même raisonnement que pour les cours : sans aucun taux en cache, se taire
+    // ferait convertir le portefeuille avec une série vide.
+    if (freshness?.lastDataDate === null) {
+      throw new YahooDataError(
+        "no-data",
+        `${upper}EUR=X`,
+        freshness.lastError ?? `Aucun taux de change disponible pour ${upper}.`,
+      );
+    }
     return { fetched: 0, fromCache: true };
   }
 

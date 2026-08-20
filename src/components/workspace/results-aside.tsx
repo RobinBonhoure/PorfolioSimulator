@@ -23,9 +23,14 @@ import type { BacktestMetrics } from "@/lib/engine/types";
 export function ResultsAside({
   metrics,
   assets,
+  realMode = false,
 }: {
   metrics: BacktestMetrics;
   assets: ResultAssetInfo[];
+  /** Les ratios portent alors sur le portefeuille déflaté. Le signaler dans le
+   *  titre est indispensable : un Sharpe réel et un Sharpe nominal se
+   *  ressemblent trop pour qu'on devine lequel on lit. */
+  realMode?: boolean;
 }) {
   const scores = scoreAllMetrics(metrics);
 
@@ -36,7 +41,7 @@ export function ResultsAside({
     <div className="space-y-5 p-4 lg:px-5 xl:px-4">
       <section className="space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Ratios
+          Ratios{realMode && " · euros constants"}
         </h2>
         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
           {scores.map((score) => (

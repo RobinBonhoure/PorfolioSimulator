@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  displayedMetrics,
+  isRealMode,
+} from "@/lib/backtest/displayed-metrics";
 import type { StrategyBacktestResponse } from "@/lib/backtest/run-for-strategy";
 import {
   formatDate,
@@ -64,17 +68,29 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
   const [logScale, setLogScale] = useState(false);
 
   const { result, assets, benchmarkLabel, warnings } = data;
-  const { metrics } = result;
+
+  // Le jeu de métriques affiché bascule intégralement en euros constants quand
+  // le rendement réel est demandé : ratios, extrêmes, baisse maximale et
+  // courbes. Un seul chiffre déflaté au milieu de chiffres nominaux serait
+  // illisible, et surtout trompeur.
+  const realMode = isRealMode(data.params.realReturns, result.metrics);
+  const metrics = displayedMetrics(result.metrics, realMode);
 
   return (
     <div className="space-y-4 p-4 lg:p-5">
-      <header>
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <p className="text-sm text-muted-foreground">
           Du {formatDate(metrics.startDate)} au {formatDate(metrics.endDate)} ·{" "}
           {metrics.effectiveYears.toFixed(1).replace(".", ",")} ans ·{" "}
           {assets.length} actif{assets.length > 1 ? "s" : ""}
           {result.usedProxyData && " · historique complété par proxy"}
         </p>
+        {realMode && (
+          <span className="rounded-full border border-[var(--series-2)]/40 bg-[var(--series-2)]/10 px-2 py-0.5 text-[11px] text-[var(--series-2)]">
+            Euros constants · inflation{" "}
+            {formatPercent(result.metrics.real!.annualInflation)} par an
+          </span>
+        )}
       </header>
 
       {warnings.length > 0 && (
@@ -90,18 +106,22 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <ValueCard
-          label="Valeur finale"
+          label={realMode ? "Valeur finale réelle" : "Valeur finale"}
           value={formatEur(metrics.finalValue)}
           hint={
-            metrics.real
-              ? `${formatEur(metrics.real.finalValue)} en euros constants`
+            realMode
+              ? `${formatEur(result.metrics.finalValue)} en euros courants`
               : undefined
           }
         />
         <ValueCard
           label="Capital investi"
           value={formatEur(metrics.totalInvested)}
-          hint={`Dont ${formatEur(metrics.initialValue)} au départ`}
+          hint={
+            realMode
+              ? `${formatEur(result.metrics.totalInvested)} en euros courants`
+              : `Dont ${formatEur(metrics.initialValue)} au départ`
+          }
         />
         <ValueCard
           label="Gain"
@@ -153,12 +173,15 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
             assets={assets}
             benchmarkLabel={benchmarkLabel}
             logScale={logScale}
+            realMode={realMode}
           />
         </div>
 
         <p className="mt-2 text-xs text-muted-foreground">
           {mode === "value" &&
-            "Valeur du portefeuille, capital cumulé investi et référence, en euros."}
+            (realMode
+              ? "Valeur du portefeuille et capital cumulé investi, en euros constants du premier jour. La référence reste en euros courants."
+              : "Valeur du portefeuille, capital cumulé investi et référence, en euros.")}
           {mode === "contribution" &&
             "Valeur de chaque ligne, empilée : la hauteur totale est la valeur du portefeuille."}
           {mode === "weights" &&
@@ -251,7 +274,11 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
           description="Ce que cette allocation pourrait devenir — un éventail de scénarios, pas une prévision."
         >
           <ProjectionPanel
-            metrics={metrics}
+            // Métriques nominales, délibérément : la projection gère sa propre
+            // hypothèse d'inflation. Lui passer le jeu déflaté ferait retrancher
+            // l'inflation deux fois.
+            metrics={result.metrics}
+            realCagr={realMode ? result.metrics.real!.cagr : null}
             monthlyReturns={result.analytics.monthlyPortfolioReturns}
             defaultInitialAmount={data.params.initialAmount}
             defaultMonthlyContribution={data.params.monthlyContribution}

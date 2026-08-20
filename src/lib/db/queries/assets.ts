@@ -69,6 +69,11 @@ export async function searchAssets(
 }
 
 export interface CatalogAsset extends AssetSearchResult {
+  /** Nature du sous-jacent : actions, obligations, monétaire, matière
+   *  première, crypto. `null` pour un actif ajouté hors catalogue. */
+  assetClass: Asset["assetClass"];
+  /** Volume moyen sur trois mois, indicateur grossier de liquidité. */
+  avgVolume: number | null;
   /** Indice répliqué, `null` pour une action, une crypto ou un métal. */
   trackedIndex: string | null;
   /** Zone géographique dominante, pour l'affichage seul. */
@@ -123,6 +128,8 @@ export async function listCatalogAssets(): Promise<CatalogAsset[]> {
     ter: row.ter,
     currency: row.currency,
     dataPartial: row.dataPartial,
+    assetClass: row.assetClass,
+    avgVolume: row.avgVolume,
     trackedIndex: row.trackedIndex,
     topGeo: dominantOf(row.geoBreakdown),
     topSector: dominantOf(row.sectorBreakdown),

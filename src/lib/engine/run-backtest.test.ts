@@ -533,7 +533,148 @@ describe("rendement réel", () => {
     expect(result.metrics.real!.finalValue).toBeLessThan(10_000);
     expect(result.metrics.real!.cagr).toBeLessThan(0);
   });
+
+  it("laisse les métriques réelles identiques aux nominales sans inflation", () => {
+    // Indice des prix figé : la déflation est l'identité. C'est le test qui
+    // garantit que la seconde passe n'introduit aucun biais de calcul.
+    const prices = growingSeries("2015-01-01", 800, 100, 180);
+    const months = flatIndex("2015-01-01", 48, 100);
+
+    const result = runBacktest(
+      makeInput(
+        [makeAsset("A", prices)],
+        makeParams({ initialAmount: 10_000, realReturns: true }),
+        { inflation: months },
+      ),
+    );
+
+    const { metrics } = result;
+    expect(metrics.real!.finalValue).toBeCloseTo(metrics.finalValue, 6);
+    expect(metrics.real!.cagr).toBeCloseTo(metrics.cagr, 9);
+    expect(metrics.real!.volatility).toBeCloseTo(metrics.volatility, 9);
+    expect(metrics.real!.drawdown.maxDrawdown).toBeCloseTo(
+      metrics.drawdown.maxDrawdown,
+      9,
+    );
+    expect(metrics.real!.annualInflation).toBeCloseTo(0, 9);
+  });
+
+  it("retrouve le taux d'inflation annualisé et le retranche du rendement", () => {
+    // Portefeuille figé à 10 000 € et prix qui doublent en dix ans :
+    // l'inflation annualisée vaut 2^(1/10) − 1 ≈ 7,177 %, et le rendement réel
+    // d'un capital immobile en est exactement l'opposé multiplicatif.
+    const days = 10 * 365;
+    const prices = constantSeries("2010-01-01", days, 100);
+    const months = geometricIndex("2010-01-01", 121, 100, 200);
+
+    const result = runBacktest(
+      makeInput(
+        [makeAsset("A", prices)],
+        makeParams({ initialAmount: 10_000, realReturns: true }),
+        { inflation: months },
+      ),
+    );
+
+    const real = result.metrics.real!;
+    const years = result.metrics.effectiveYears;
+
+    expect(real.annualInflation).toBeCloseTo(Math.pow(2, 1 / years) - 1, 4);
+    expect(real.finalValue).toBeCloseTo(5_000, 0);
+    expect(real.cagr).toBeCloseTo(1 / Math.pow(2, 1 / years) - 1, 4);
+  });
+
+  it("creuse la baisse maximale plutôt que de la laisser inchangée", () => {
+    // C'était le défaut : seule la valeur finale était déflatée, si bien que la
+    // baisse maximale réelle restait égale à la nominale. Une chute de marché
+    // doublée d'une hausse des prix se traverse pourtant deux fois.
+    const span = 10 * 365;
+    const third = span / 3;
+    // Montée de 100 à 150, chute de 40 %, puis remontée.
+    const prices = makeSeries("2010-01-01", span, (i) =>
+      i < third
+        ? 100 + (50 * i) / third
+        : i < 2 * third
+          ? 150 - (60 * (i - third)) / third
+          : 90 + (60 * (i - 2 * third)) / third,
+    );
+
+    const result = runBacktest(
+      makeInput(
+        [makeAsset("A", prices)],
+        makeParams({ initialAmount: 10_000, realReturns: true }),
+        { inflation: geometricIndex("2010-01-01", 121, 100, 200) },
+      ),
+    );
+
+    const { metrics } = result;
+    expect(metrics.drawdown.maxDrawdown).toBeLessThan(0);
+    expect(metrics.real!.drawdown.maxDrawdown).toBeLessThan(
+      metrics.drawdown.maxDrawdown,
+    );
+  });
+
+  it("déflate chaque versement à sa propre date", () => {
+    // Versements réguliers sur dix ans d'inflation : le capital engagé en euros
+    // constants est nécessairement inférieur au cumul nominal, mais supérieur à
+    // ce que donnerait une déflation en bloc au taux terminal.
+    const days = 10 * 365;
+    const prices = constantSeries("2010-01-01", days, 100);
+    const months = geometricIndex("2010-01-01", 121, 100, 200);
+
+    const result = runBacktest(
+      makeInput(
+        [makeAsset("A", prices)],
+        makeParams({
+          initialAmount: 1_000,
+          monthlyContribution: 100,
+          realReturns: true,
+        }),
+        { inflation: months },
+      ),
+    );
+
+    const { metrics } = result;
+    const nominal = metrics.totalInvested;
+    const enBloc = nominal * 0.5; // déflation au seul taux terminal
+
+    expect(metrics.real!.totalInvested).toBeLessThan(nominal);
+    expect(metrics.real!.totalInvested).toBeGreaterThan(enBloc);
+  });
 });
+
+/** Indice des prix constant : aucune inflation. */
+function flatIndex(start: string, count: number, value: number) {
+  return monthlyIndex(start, count, () => value);
+}
+
+/** Indice croissant géométriquement de `from` à `to` sur `count` mois. */
+function geometricIndex(
+  start: string,
+  count: number,
+  from: number,
+  to: number,
+) {
+  const ratio = Math.pow(to / from, 1 / (count - 1));
+  return monthlyIndex(start, count, (i) => from * Math.pow(ratio, i));
+}
+
+function monthlyIndex(
+  start: string,
+  count: number,
+  valueAt: (index: number) => number,
+) {
+  const [year, month] = start.split("-").map(Number);
+  const points: { period: string; hicpIndex: number }[] = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const total = month - 1 + i;
+    const y = year + Math.floor(total / 12);
+    const m = String((total % 12) + 1).padStart(2, "0");
+    points.push({ period: `${y}-${m}-01`, hicpIndex: valueAt(i) });
+  }
+
+  return points;
+}
 
 describe("entrées invalides", () => {
   it("refuse une somme de poids différente de 100 %", () => {

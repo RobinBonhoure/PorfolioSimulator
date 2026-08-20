@@ -1,6 +1,6 @@
 "use client";
 
-import { Columns3, LineChart, Plus } from "lucide-react";
+import { Columns3, LineChart, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,9 +42,17 @@ export function StrategyList({
         title="Rien à comparer pour l'instant"
         description="Composez une allocation d'actifs, lancez un backtest sur données historiques réelles, et gardez la stratégie pour la confronter aux suivantes."
         action={
-          <Button asChild size="sm">
-            <Link href="/strategies/new">Créer ma première stratégie</Link>
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button asChild size="sm">
+              <Link href="/strategies/guide">
+                <Sparkles className="size-4" />
+                Être guidé pas à pas
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/strategies/new">Composer moi-même</Link>
+            </Button>
+          </div>
         }
       />
     );
@@ -98,13 +106,30 @@ export function StrategyList({
   );
 }
 
+/**
+ * Deux chemins de création, côte à côte.
+ *
+ * Le parcours guidé traduit un projet en allocation ; la composition directe
+ * suppose qu'on sait déjà ce qu'on veut. Les deux publics existent, et imposer
+ * six questions à qui veut seulement tester 100 % MSCI World serait une friction
+ * gratuite. Le guidé est mis en avant parce que c'est celui qui débloque
+ * quelqu'un qui ne sait pas par où commencer.
+ */
 export function NewStrategyButton() {
   return (
-    <Button asChild size="sm">
-      <Link href="/strategies/new">
-        <Plus className="size-4" />
-        Nouvelle stratégie
-      </Link>
-    </Button>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button asChild size="sm" variant="outline">
+        <Link href="/strategies/new">
+          <Plus className="size-4" />
+          Composer moi-même
+        </Link>
+      </Button>
+      <Button asChild size="sm">
+        <Link href="/strategies/guide">
+          <Sparkles className="size-4" />
+          Être guidé
+        </Link>
+      </Button>
+    </div>
   );
 }

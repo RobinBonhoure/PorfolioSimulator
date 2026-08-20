@@ -157,6 +157,13 @@ export interface PortfolioDayPoint {
   invested: number;
   /** Vrai si au moins un actif est valorisé via son proxy ce jour-là. */
   hasProxyData: boolean;
+  /** Valeur et capital versé ramenés en euros du premier jour. Renseignés
+   *  seulement si `params.realReturns` est actif. Fournis calculés plutôt que
+   *  sous forme de déflateur : la vue n'a pas à faire d'arithmétique
+   *  financière, et deux consommateurs ne risquent pas de la faire
+   *  différemment. */
+  realValue?: number;
+  realInvested?: number;
 }
 
 export interface AssetSeriesPoint {
@@ -204,6 +211,38 @@ export interface TaxationResult {
   peaBlockingAssets: string[];
 }
 
+/**
+ * Le même portefeuille, mesuré en euros constants.
+ *
+ * Jeu **complet** et non un simple appoint : déflater la seule valeur finale
+ * laisserait le rendement annualisé, la volatilité, la baisse maximale et les
+ * trois ratios en euros courants, tous affichés côte à côte avec un unique
+ * chiffre réel. L'utilisateur croirait lire un portefeuille corrigé de
+ * l'inflation alors qu'il n'en verrait qu'une ligne.
+ *
+ * La baisse maximale réelle est plus profonde que la nominale, et c'est
+ * exactement le genre d'écart que la moitié d'un calcul masquerait.
+ */
+export interface RealMetrics {
+  finalValue: number;
+  /** Chaque versement ramené en euros de la date de départ. */
+  totalInvested: number;
+  totalGain: number;
+  totalReturn: number;
+  cagr: number;
+  volatility: number;
+  drawdown: DrawdownInfo;
+  bestMonth: PeriodExtreme | null;
+  worstMonth: PeriodExtreme | null;
+  bestYear: PeriodExtreme | null;
+  worstYear: PeriodExtreme | null;
+  sharpe: number | null;
+  sortino: number | null;
+  calmar: number | null;
+  /** Inflation annualisée constatée sur la période simulée. */
+  annualInflation: number;
+}
+
 export interface BacktestMetrics {
   startDate: IsoDate;
   endDate: IsoDate;
@@ -238,11 +277,7 @@ export interface BacktestMetrics {
   calmar: number | null;
 
   /** Présent seulement si `params.realReturns` est actif. */
-  real?: {
-    finalValue: number;
-    totalReturn: number;
-    cagr: number;
-  };
+  real?: RealMetrics;
   /** Présent seulement si `params.taxation` est actif. */
   taxation?: TaxationResult;
 }

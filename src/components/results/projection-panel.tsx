@@ -19,7 +19,6 @@ import {
   DEFAULT_PROJECTION,
   ProjectionError,
   RETURN_ASSUMPTIONS,
-  historicalAnnualReturnOf,
   meanReturnStandardError,
   runProjection,
 } from "@/lib/engine/projection";
@@ -60,12 +59,18 @@ export function ProjectionPanel({
   monthlyReturns,
   defaultInitialAmount,
   defaultMonthlyContribution,
+  realCagr = null,
 }: {
   metrics: BacktestMetrics;
   monthlyReturns: number[];
   /** Capital initial de la stratégie, repris tel quel comme point de départ. */
   defaultInitialAmount: number;
   defaultMonthlyContribution: number;
+  /** Rendement annualisé en euros constants, renseigné seulement quand la
+   *  stratégie est affichée en rendement réel. C'est alors ce chiffre-là que le
+   *  reste de l'écran montre, et c'est donc lui que l'option « Du backtest »
+   *  doit reprendre. */
+  realCagr?: number | null;
 }) {
   const [years, setYears] = useState(20);
   // Le plan d'investissement de la stratégie est repris tel quel : même mise
@@ -83,23 +88,63 @@ export function ProjectionPanel({
   // `null` signifie « laisser l'application décider » : l'échelle bascule en
   // logarithmique dès que l'éventail traverse plusieurs ordres de grandeur.
   // Toucher l'interrupteur fige le choix de l'utilisateur.
+  // Le plan d'investissement suit celui de la stratégie. Sans cette
+  // resynchronisation, porter le versement mensuel de 300 à 900 € dans la
+  // colonne de gauche laissait la projection sur les 300 € du premier rendu :
+  // les deux moitiés de l'écran décrivaient alors deux plans différents.
+  // L'ajustement se fait pendant le rendu, et seulement quand la stratégie
+  // change — une valeur saisie ici reste donc modifiable librement entre deux
+  // changements.
+  const [seenPlan, setSeenPlan] = useState({
+    initialAmount: defaultInitialAmount,
+    contribution: defaultMonthlyContribution,
+  });
+  if (
+    seenPlan.initialAmount !== defaultInitialAmount ||
+    seenPlan.contribution !== defaultMonthlyContribution
+  ) {
+    setSeenPlan({
+      initialAmount: defaultInitialAmount,
+      contribution: defaultMonthlyContribution,
+    });
+    setInitialAmount(defaultInitialAmount);
+    setContribution(defaultMonthlyContribution);
+  }
+
   const [logScaleOverride, setLogScaleOverride] = useState<boolean | null>(
     null,
   );
 
+  // Taux de l'option « Du backtest » : le rendement annualisé affiché partout
+  // ailleurs sur l'écran, et rien d'autre.
+  //
+  // Il valait d'abord la moyenne géométrique des rendements mensuels — une
+  // grandeur voisine mais distincte du rendement annualisé, dont elle s'écartait
+  // de quatre dixièmes de point. Puis, le rendement nominal alors que la
+  // stratégie affichait du réel, soit deux points d'écart. Dans les deux cas le
+  // symptôme est le même : deux nombres pour une seule grandeur, côte à côte.
+  //
+  // La règle est donc unique : reprendre le chiffre que le reste de l'écran
+  // montre. Quand il est déjà net d'inflation, aucune inflation n'est appliquée
+  // par-dessus — c'est ce que gère `appliedInflation` plus bas.
+  const rateIsReal = realCagr !== null;
+  const historicalRate = rateIsReal ? realCagr : metrics.cagr;
+
   const expectedAnnualReturn =
-    assumption === HISTORICAL_OPTION ? null : Number(assumption);
+    assumption === HISTORICAL_OPTION ? historicalRate : Number(assumption);
 
   const selectedAssumption = RETURN_ASSUMPTIONS.find(
     (option) => String(option.value) === assumption,
   );
 
-  // Étiquette de l'option tirée du backtest : la valeur réellement appliquée, et
-  // non le CAGR affiché ailleurs, qui en diffère de quelques dixièmes de point.
-  const historicalRate = useMemo(
-    () => historicalAnnualReturnOf(monthlyReturns),
-    [monthlyReturns],
-  );
+
+  // Un taux déjà net d'inflation ne doit pas être déflaté une seconde fois.
+  // C'est le cas de l'option « Du backtest » quand la stratégie est affichée en
+  // euros constants : la projection est alors réelle sans rien avoir à
+  // retrancher.
+  const rateAlreadyReal = rateIsReal && assumption === HISTORICAL_OPTION;
+  const appliedInflation =
+    rateAlreadyReal || !inRealTerms ? 0 : DEFAULT_PROJECTION.expectedInflation;
 
   const projection = useMemo(() => {
     try {
@@ -110,9 +155,7 @@ export function ProjectionPanel({
           monthlyContribution: contribution,
           years,
           expectedAnnualReturn,
-          expectedInflation: inRealTerms
-            ? DEFAULT_PROJECTION.expectedInflation
-            : 0,
+          expectedInflation: appliedInflation,
         }),
         error: null as string | null,
       };
@@ -131,7 +174,7 @@ export function ProjectionPanel({
     contribution,
     years,
     expectedAnnualReturn,
-    inRealTerms,
+    appliedInflation,
   ]);
 
   if (projection.error || !projection.value) {
@@ -144,6 +187,10 @@ export function ProjectionPanel({
   }
 
   const result = projection.value;
+
+  // La projection est en euros constants soit parce qu'on y retranche une
+  // hypothèse d'inflation, soit parce que le taux de départ en était déjà net.
+  const projectionIsReal = rateAlreadyReal || result.inRealTerms;
 
   // L'incertitude sur le rendement moyen mesuré : c'est le chiffre qui doit
   // accompagner toute tentation de reprendre le CAGR du backtest comme
@@ -209,6 +256,7 @@ export function ProjectionPanel({
               ))}
               <SelectItem value={HISTORICAL_OPTION}>
                 Du backtest — {formatPercent(historicalRate, 1)}
+                {rateIsReal && " net d'inflation"}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -288,7 +336,7 @@ export function ProjectionPanel({
             {formatEur(result.terminal.p95)}
           </span>{" "}
           dans 90 % des scénarios simulés
-          {result.inRealTerms ? ", en pouvoir d'achat d'aujourd'hui" : ""}. Ce
+          {projectionIsReal ? ", en pouvoir d'achat d'aujourd'hui" : ""}. Ce
           sont des valeurs totales de portefeuille, versements compris.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -320,10 +368,14 @@ export function ProjectionPanel({
         >
           <Switch
             id="projection-real"
-            checked={inRealTerms}
+            checked={rateAlreadyReal || inRealTerms}
             onCheckedChange={setInRealTerms}
+            // Le taux du backtest est déjà net d'inflation quand la stratégie
+            // est affichée en euros constants : il n'y a plus rien à retrancher,
+            // et laisser le réglage actif inviterait à la déduire deux fois.
+            disabled={rateAlreadyReal}
           />
-          Inflation (2%)
+          {rateAlreadyReal ? "Inflation (déjà déduite)" : "Inflation (2%)"}
         </Label>
         <Label
           htmlFor="projection-log"
@@ -410,7 +462,9 @@ export function ProjectionPanel({
             {formatPercent(result.appliedAnnualReturn)}, net de frais.{" "}
             {selectedAssumption
               ? selectedAssumption.description
-              : "C'est le rythme mesuré sur le backtest de cette stratégie, prolongé tel quel."}
+              : rateIsReal
+                ? "C'est le rythme mesuré sur le backtest de cette stratégie, déjà net d'inflation, prolongé tel quel. Aucune inflation n'est retranchée par-dessus."
+                : "C'est le rythme mesuré sur le backtest de cette stratégie, prolongé tel quel."}
           </li>
 
           {/* Prolonger le rendement mesuré revient à parier que la période
@@ -431,13 +485,13 @@ export function ProjectionPanel({
             </li>
           )}
           <li>
-            Le backtest a mesuré {formatPercent(metrics.cagr)} sur{" "}
+            Le backtest a mesuré {formatPercent(historicalRate)} sur{" "}
             {metrics.effectiveYears.toFixed(1).replace(".", ",")} ans, mais
             l&apos;erreur type sur cette moyenne vaut{" "}
             {formatPercent(standardError, 1)} : le rendement réellement espéré
             se situe, avec 95 % de confiance, entre{" "}
-            {formatPercent(metrics.cagr - 1.96 * standardError)} et{" "}
-            {formatPercent(metrics.cagr + 1.96 * standardError)}. C&apos;est
+            {formatPercent(historicalRate - 1.96 * standardError)} et{" "}
+            {formatPercent(historicalRate + 1.96 * standardError)}. C&apos;est
             pourquoi reprendre le rendement passé comme hypothèse est hasardeux.
           </li>
           <li>

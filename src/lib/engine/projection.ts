@@ -379,27 +379,6 @@ export function runProjection(
   };
 }
 
-/**
- * Taux composé annuel d'une série de rendements mensuels.
- *
- * Exposé pour que l'interface puisse étiqueter l'option « historique » avec la
- * valeur que la projection appliquera réellement. Elle diffère légèrement du
- * CAGR du backtest, qui porte sur les rendements quotidiens et inclut le
- * dernier mois partiel — un écart de quelques dixièmes de point, mais afficher
- * un chiffre et en appliquer un autre serait indéfendable.
- */
-export function historicalAnnualReturnOf(
-  monthlyReturns: readonly number[],
-): number {
-  if (monthlyReturns.length === 0) return 0;
-  if (monthlyReturns.some((value) => value <= -1)) return 0;
-
-  const logMean =
-    monthlyReturns.reduce((sum, value) => sum + Math.log(1 + value), 0) /
-    monthlyReturns.length;
-
-  return Math.pow(Math.exp(logMean), 12) - 1;
-}
 
 /**
  * Erreur type sur le rendement annuel moyen, en points.
