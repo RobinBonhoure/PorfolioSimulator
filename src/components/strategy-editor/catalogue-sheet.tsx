@@ -57,10 +57,15 @@ export function CatalogueSheet({
   catalog,
   selectedIds,
   onAdd,
+  disabledReason = null,
 }: {
   catalog: CatalogAsset[];
   selectedIds: readonly string[];
   onAdd: (asset: EditorAsset) => void;
+  /** Quand il est renseigné, plus rien ne peut être ajouté et la raison est
+   *  affichée en tête. La comparaison s'en sert à quatre éléments : laisser les
+   *  lignes cliquables pour ne rien faire ensuite passerait pour une panne. */
+  disabledReason?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TypeFilter>("all");
@@ -150,9 +155,8 @@ export function CatalogueSheet({
           <div>
             <SheetTitle>Catalogue</SheetTitle>
             <SheetDescription>
-              {filtered.length} actif{filtered.length > 1 ? "s" : ""} sur{" "}
-              {catalog.length}. Le panneau reste ouvert : ajoutez-en plusieurs
-              d&apos;affilée.
+              {disabledReason ??
+                `${filtered.length} actif${filtered.length > 1 ? "s" : ""} sur ${catalog.length}. Le panneau reste ouvert : ajoutez-en plusieurs d'affilée.`}
             </SheetDescription>
           </div>
 
@@ -225,16 +229,17 @@ export function CatalogueSheet({
                 <ul className="space-y-1">
                   {group.assets.map((asset) => {
                     const already = selectedIds.includes(asset.id);
+                    const blocked = already || disabledReason !== null;
 
                     return (
                       <li key={asset.id}>
                         <button
                           type="button"
-                          disabled={already}
+                          disabled={blocked}
                           onClick={() => add(asset)}
                           className={cn(
                             "flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors",
-                            already
+                            blocked
                               ? "cursor-default opacity-60"
                               : "hover:bg-secondary/60",
                           )}

@@ -13,7 +13,14 @@ import {
 
 import { ChartLegend, ChartTooltip } from "@/components/charts/chart-tooltip";
 import type { ComparisonPoint } from "@/lib/backtest/compare";
-import { formatMonthShort, formatPercent, formatRatio } from "@/lib/utils/format";
+import { INVESTED_KEY } from "@/lib/backtest/comparison-keys";
+import { REFERENCE_COLORS } from "@/lib/utils/asset-palette";
+import {
+  formatEur,
+  formatEurCompact,
+  formatMonthShort,
+  formatPercent,
+} from "@/lib/utils/format";
 
 interface SeriesInfo {
   id: string;
@@ -28,12 +35,15 @@ const AXIS_STYLE = {
 } as const;
 
 /**
- * Courbes superposées, base 100.
+ * Courbes superposées, en euros.
  *
- * Une seule échelle pour toutes les stratégies : c'est précisément l'intérêt de
- * la normalisation. Superposer des montants en euros comparerait des capitaux
- * de départ, et il faudrait alors deux axes — un procédé qui laisse l'auteur du
- * graphique décider où les courbes se croisent.
+ * Une seule échelle pour tout le monde, sans que cela demande de normalisation :
+ * la comparaison impose le même plan à tous les éléments, donc le même capital
+ * de départ et le même échéancier de versements. Les courbes partent du montant
+ * saisi et se lisent directement en euros, ce qu'une base 100 ne permettait pas.
+ *
+ * Le capital versé sert de repère commun : au-dessus, l'allocation a rapporté
+ * plus que ce qu'on y a mis ; en dessous, elle a détruit de la valeur.
  */
 export function CompareValueChart({
   series,
@@ -61,9 +71,12 @@ export function CompareValueChart({
             <YAxis
               {...AXIS_STYLE}
               width={56}
-              tickFormatter={(value: number) => formatRatio(value, 0)}
+              domain={[0, "auto"]}
+              // Abrégé, pas complet : comparer un support à une allocation peut
+              // faire tenir 25 k€ et 6 M€ sur le même axe, et « 6 646 332 € »
+              // en graduation mangerait le quart du graphique.
+              tickFormatter={(value: number) => formatEurCompact(value)}
             />
-            <ReferenceLine y={100} stroke="var(--axis)" strokeDasharray="3 3" />
             <Tooltip
               cursor={{ stroke: "var(--axis)" }}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,15 +86,30 @@ export function CompareValueChart({
                 return (
                   <ChartTooltip
                     date={String(label)}
-                    rows={strategies.map((strategy) => ({
-                      label: strategy.name,
-                      value: formatRatio(Number(point[strategy.id] ?? 0), 1),
-                      color: strategy.color,
-                    }))}
-                    footer="Base 100 au début de la période commune"
+                    rows={[
+                      ...strategies.map((strategy) => ({
+                        label: strategy.name,
+                        value: formatEur(Number(point[strategy.id] ?? 0)),
+                        color: strategy.color,
+                      })),
+                      {
+                        label: "Capital investi",
+                        value: formatEur(Number(point[INVESTED_KEY] ?? 0)),
+                        color: REFERENCE_COLORS.invested,
+                      },
+                    ]}
+                    footer="Même plan d'investissement pour tous les éléments"
                   />
                 );
               }}
+            />
+            <Line
+              dataKey={INVESTED_KEY}
+              stroke={REFERENCE_COLORS.invested}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              isAnimationActive={false}
             />
             {strategies.map((strategy) => (
               <Line
@@ -98,7 +126,14 @@ export function CompareValueChart({
       </div>
 
       <ChartLegend
-        items={strategies.map((s) => ({ label: s.name, color: s.color }))}
+        items={[
+          ...strategies.map((s) => ({ label: s.name, color: s.color })),
+          {
+            label: "Capital investi",
+            color: REFERENCE_COLORS.invested,
+            dashed: true,
+          },
+        ]}
       />
     </div>
   );

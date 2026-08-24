@@ -36,6 +36,20 @@
       "when": 1787238679768,
       "tag": "0004_add_asset_class",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787569915015,
+      "tag": "0005_add_last_comparisons",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787576300243,
+      "tag": "0006_add_comparison_params",
+      "breakpoints": true
     }
   ]
 }

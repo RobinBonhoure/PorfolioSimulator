@@ -3,7 +3,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { ComparedStrategy } from "@/lib/backtest/compare";
+import type { ComparedItem } from "@/lib/backtest/compare";
 import { METRIC_THRESHOLDS, type MetricKey } from "@/lib/engine/thresholds";
 import { scoreMetric } from "@/lib/engine/scoring";
 import type { BacktestMetrics } from "@/lib/engine/types";
@@ -140,7 +140,7 @@ export function CompareTable({
   strategies,
   colors,
 }: {
-  strategies: ComparedStrategy[];
+  strategies: ComparedItem[];
   colors: Map<string, string>;
 }) {
   return (

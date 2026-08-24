@@ -14,6 +14,7 @@ import type {
   BenchmarkInput,
   EngineInput,
   FxPoint,
+  IsoDate,
   StrategyParams,
 } from "@/lib/engine/types";
 
@@ -38,10 +39,21 @@ export interface PreparedInput {
   catalog: Map<string, Asset>;
 }
 
+/**
+ * Fenêtre imposée au moteur, en remplacement de celle qu'il déduirait de la
+ * durée demandée. La comparaison s'en sert pour rejouer tous les éléments sur
+ * la période commune.
+ */
+export interface EngineWindow {
+  startDate?: IsoDate;
+  endDate?: IsoDate;
+}
+
 export async function prepareEngineInput(options: {
   selection: readonly StrategyAssetSelection[];
   params: StrategyParams;
   benchmarkTicker?: string | null;
+  window?: EngineWindow | null;
 }): Promise<PreparedInput> {
   const { selection, params } = options;
   const warnings: string[] = [];
@@ -168,6 +180,8 @@ export async function prepareEngineInput(options: {
       benchmark: benchmarkInput,
       fx,
       inflation,
+      startDate: options.window?.startDate,
+      endDate: options.window?.endDate,
     },
     warnings,
     catalog,

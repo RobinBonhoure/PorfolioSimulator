@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CorrelationHeatmap } from "@/components/charts/correlation-heatmap";
 import { MainChart, type MainChartMode } from "@/components/charts/main-chart";
 import { RollingReturnsChart } from "@/components/charts/rolling-returns-chart";
+import { AssetBreakdown } from "@/components/results/asset-breakdown";
 import { FeeBreakdown } from "@/components/results/fee-breakdown";
 import { ValueCard } from "@/components/results/metric-card";
 import { ProjectionPanel } from "@/components/results/projection-panel";
@@ -180,7 +181,7 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
         <p className="mt-2 text-xs text-muted-foreground">
           {mode === "value" &&
             (realMode
-              ? "Valeur du portefeuille et capital cumulé investi, en euros constants du premier jour. La référence reste en euros courants."
+              ? "Valeur du portefeuille, capital cumulé investi et référence, en euros constants du premier jour."
               : "Valeur du portefeuille, capital cumulé investi et référence, en euros.")}
           {mode === "contribution" &&
             "Valeur de chaque ligne, empilée : la hauteur totale est la valeur du portefeuille."}
@@ -188,6 +189,21 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
             "Poids de chaque ligne dans le portefeuille. La dérive entre deux rééquilibrages s'y lit directement."}
         </p>
       </section>
+
+      <Section
+        title="Détail par support"
+        description="Ce que chaque ligne a coûté, vaut et rapporté. Les totaux retombent sur ceux du bandeau."
+      >
+        <AssetBreakdown
+          performance={
+            realMode && result.assetPerformanceReal
+              ? result.assetPerformanceReal
+              : result.assetPerformance
+          }
+          assets={assets}
+          realMode={realMode}
+        />
+      </Section>
 
       <div className="grid gap-4 2xl:grid-cols-2">
         <Section

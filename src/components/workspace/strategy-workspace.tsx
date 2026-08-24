@@ -251,7 +251,12 @@ export function StrategyWorkspace({
           `contents` les fait remonter en colonnes de la grille. C'est ce qui
           évite d'avoir à rendre la colonne de droite deux fois. */}
       <div className="flex flex-col lg:min-h-0 lg:overflow-y-auto xl:contents">
-        <section className="flex min-h-0 flex-col xl:overflow-hidden">
+        {/* `min-h-0` seulement à partir de 1280 px : en dessous, la section est
+            empilée au-dessus de la synthèse et doit garder sa hauteur de
+            contenu. Autorisée à rétrécir sans rien couper, elle laissait son
+            contenu se superposer au bloc suivant — graphique et ratios
+            imprimés l'un sur l'autre entre 1024 et 1280 px. */}
+        <section className="flex flex-col xl:min-h-0 xl:overflow-hidden">
           <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-3 py-2 lg:px-5 xl:static">
             <div className="flex min-w-0 items-center gap-2">
               <Drawer>

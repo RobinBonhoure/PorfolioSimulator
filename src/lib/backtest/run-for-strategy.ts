@@ -12,7 +12,7 @@ import type {
 } from "@/lib/engine/types";
 import { downsampleResult } from "./downsample";
 import { computeParamsHash } from "./params-hash";
-import { prepareEngineInput } from "./prepare-input";
+import { prepareEngineInput, type EngineWindow } from "./prepare-input";
 
 /** Actif tel que présenté par l'écran de résultats. */
 export interface ResultAssetInfo {
@@ -84,6 +84,10 @@ export async function runBacktestForStrategy(options: {
    *  résultat : ni ses paramètres ni ses actifs ne sont lus, et rien n'est
    *  écrit. */
   draft?: BacktestDraft | null;
+  /** Fenêtre imposée, en remplacement de celle déduite de la durée. Le résultat
+   *  ne décrivant plus la stratégie telle qu'elle est paramétrée, il n'est
+   *  jamais mis en cache. */
+  window?: EngineWindow | null;
 }): Promise<StrategyBacktestResponse> {
   const { strategyId, userId, draft } = options;
 
@@ -146,6 +150,7 @@ export async function runBacktestForStrategy(options: {
     selection,
     params,
     benchmarkTicker: params.benchmark,
+    window: options.window,
   });
 
   const result = runBacktest(prepared.input);
@@ -161,8 +166,10 @@ export async function runBacktestForStrategy(options: {
   // Un brouillon n'est pas mis en cache : il ne décrit pas la stratégie
   // enregistrée, et les cards de `/strategies` lisent cette table. Y écrire
   // ferait afficher dans la liste des chiffres qui ne correspondent à aucun
-  // état sauvegardé.
-  if (!draft) {
+  // état sauvegardé. Une fenêtre imposée est écartée pour la même raison : le
+  // résultat porte sur une période choisie par l'appelant, pas sur la durée
+  // paramétrée.
+  if (!draft && !options.window) {
     const paramsHash = computeParamsHash(params, selection);
     const dataThrough =
       (await latestDataDate(selection.map((s) => s.assetId))) ??

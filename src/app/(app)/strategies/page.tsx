@@ -22,10 +22,10 @@ export default async function StrategiesPage() {
             <p className="text-sm text-muted-foreground">
               {strategies.length === 0
                 ? "Aucune stratégie enregistrée."
-                : `${strategies.length} stratégie${strategies.length > 1 ? "s" : ""} · sélectionnez-en deux à quatre pour les comparer.`}
+                : `${strategies.length} stratégie${strategies.length > 1 ? "s" : ""} enregistrée${strategies.length > 1 ? "s" : ""}.`}
             </p>
           </div>
-          <NewStrategyButton />
+          <NewStrategyButton canCompare={strategies.length >= 2} />
         </div>
 
         <StrategyList strategies={strategies} />

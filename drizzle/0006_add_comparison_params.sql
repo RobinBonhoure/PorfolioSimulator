@@ -1,0 +1,1 @@
+ALTER TABLE "last_comparisons" ADD COLUMN "params" jsonb;

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { deleteStrategy, duplicateStrategy } from "@/actions/strategies";
 import { PeaBadge } from "@/components/strategy-editor/pea-badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { StrategyListItem } from "@/lib/db/queries/strategies";
+import { HoldingsBar } from "./holdings-bar";
 import { formatPercent, formatRatio } from "@/lib/utils/format";
 
 /**
@@ -29,17 +29,7 @@ import { formatPercent, formatRatio } from "@/lib/utils/format";
  * Une stratégie jamais lancée affiche l'absence de résultat plutôt que des
  * tirets muets : c'est une invitation à la lancer, pas une donnée manquante.
  */
-export function StrategyCard({
-  strategy,
-  selected,
-  onSelectedChange,
-  selectionDisabled,
-}: {
-  strategy: StrategyListItem;
-  selected: boolean;
-  onSelectedChange: (selected: boolean) => void;
-  selectionDisabled: boolean;
-}) {
+export function StrategyCard({ strategy }: { strategy: StrategyListItem }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -48,28 +38,24 @@ export function StrategyCard({
   return (
     <div className="group relative flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20">
       <div className="flex items-start gap-2">
-        <Checkbox
-          checked={selected}
-          disabled={selectionDisabled && !selected}
-          onCheckedChange={(value) => onSelectedChange(value === true)}
-          aria-label={`Sélectionner ${strategy.name} pour la comparaison`}
-          className="mt-0.5"
-        />
-
+        {/* Le calque du lien couvre toute la carte pour en faire une cible
+            unique. Tout contrôle qui doit rester cliquable passe donc au-dessus
+            avec `relative z-10` : c'est ce qui manquait à l'ancienne case à
+            cocher de comparaison, qui se retrouvait dessous. */}
         <Link
           href={`/strategies/${strategy.id}`}
           className="min-w-0 flex-1 after:absolute after:inset-0 after:content-['']"
         >
           <p className="truncate font-medium">{strategy.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {strategy.assetCount} actif{strategy.assetCount > 1 ? "s" : ""}
-            {strategy.description ? ` · ${strategy.description}` : ""}
-          </p>
+          {strategy.description && (
+            <p className="truncate text-xs text-muted-foreground">
+              {strategy.description}
+            </p>
+          )}
         </Link>
 
         <PeaBadge eligible={strategy.peaEligible ? true : false} />
 
-        {/* Au-dessus du lien couvrant, sinon le clic ouvrirait la stratégie. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -123,6 +109,8 @@ export function StrategyCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <HoldingsBar holdings={strategy.holdings} />
 
       {metrics ? (
         <dl className="grid grid-cols-3 gap-2 border-t pt-3 text-xs">

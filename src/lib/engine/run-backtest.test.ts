@@ -10,6 +10,7 @@ import {
   makeSeries,
   weekdays,
 } from "@/test/fixtures/series";
+import type { AssetPerformance } from "./types";
 import { runBacktest, BacktestError } from "./run-backtest";
 import { DEFAULT_FEES } from "./fees";
 
@@ -460,6 +461,51 @@ describe("actifs plus jeunes que la période demandée", () => {
   });
 });
 
+describe("fenêtre imposée", () => {
+  // 501 jours ouvrés de 100 à 200 : le prix à mi-parcours vaut 100 × √2, donc
+  // un départ forcé ce jour-là multiplie le capital par 200 / (100 × √2) = √2.
+  const dates = weekdays("2020-01-01", 501);
+  const prices = growingSeries("2020-01-01", 501, 100, 200);
+
+  it("part de la date demandée avec le capital initial entier", () => {
+    const result = runBacktest(
+      makeInput([makeAsset("A", prices)], makeParams({ initialAmount: 10_000 }), {
+        startDate: dates[250],
+      }),
+    );
+
+    expect(result.metrics.startDate).toBe(dates[250]);
+    // Le capital initial est versé à la date imposée, et non conservé depuis un
+    // départ antérieur : c'est ce qui rend deux allocations superposables.
+    expect(result.series.portfolio[0].value).toBeCloseTo(10_000, 6);
+    expect(result.metrics.totalInvested).toBe(10_000);
+    expect(result.metrics.finalValue).toBeCloseTo(10_000 * Math.SQRT2, 3);
+  });
+
+  it("ne remonte pas avant la première cotation disponible", () => {
+    const result = runBacktest(
+      makeInput([makeAsset("A", prices)], makeParams(), {
+        startDate: "2015-01-01",
+      }),
+    );
+
+    expect(result.metrics.startDate).toBe(dates[0]);
+  });
+
+  it("prime sur la durée demandée", () => {
+    // Un an de durée nominale, mais une fenêtre imposée qui couvre tout :
+    // c'est la fenêtre qui gagne.
+    const result = runBacktest(
+      makeInput([makeAsset("A", prices)], makeParams({ years: 1 }), {
+        startDate: dates[0],
+      }),
+    );
+
+    expect(result.metrics.startDate).toBe(dates[0]);
+    expect(result.metrics.finalValue).toBeCloseTo(20_000, 3);
+  });
+});
+
 describe("fiscalité", () => {
   it("applique 17,2 % en PEA et 30 % en compte-titres sur le même gain", () => {
     // 10 000 € qui doublent : 10 000 € de plus-value.
@@ -707,3 +753,246 @@ describe("entrées invalides", () => {
     );
   });
 });
+
+describe("détail par actif", () => {
+  it("fait exactement le total du portefeuille, sans rééquilibrage", () => {
+    // Sans rééquilibrage ni frais, l'identité est facile à poser à la main :
+    // chaque ligne reçoit sa part du versement, et rien ne circule ensuite.
+    const a = makeAsset("A", growingSeries("2020-01-01", 500, 100, 200), { targetWeight: 0.6 });
+    const b = makeAsset("B", growingSeries("2020-01-01", 500, 100, 150), { targetWeight: 0.4 });
+
+    const result = runBacktest(
+      makeInput(
+        [a, b],
+        makeParams({
+          initialAmount: 10_000,
+          rebalancing: { period: "none", thresholdEnabled: false, thresholdPoints: 5 },
+        }),
+      ),
+    );
+
+    const rows = result.assetPerformance;
+    const { metrics } = result;
+
+    // 6 000 € doublent, 4 000 € font +50 % : 12 000 + 6 000 = 18 000 €.
+    expect(rows.find((r) => r.assetId === "A")!.invested).toBeCloseTo(6_000, 6);
+    expect(rows.find((r) => r.assetId === "A")!.finalValue).toBeCloseTo(12_000, 6);
+    expect(rows.find((r) => r.assetId === "B")!.finalValue).toBeCloseTo(6_000, 6);
+
+    expect(sum(rows, "invested")).toBeCloseTo(metrics.totalInvested, 6);
+    expect(sum(rows, "finalValue")).toBeCloseTo(metrics.finalValue, 6);
+    expect(sum(rows, "gain")).toBeCloseTo(metrics.totalGain, 6);
+  });
+
+  it("fait toujours le total avec rééquilibrage, versements et frais", () => {
+    // Le cas qui casse une comptabilité naïve : le rééquilibrage déplace de
+    // l'argent entre les lignes et les ordres coûtent, sans qu'aucun euro ne
+    // doive disparaître du décompte.
+    const a = makeAsset("A", growingSeries("2018-01-01", 900, 100, 260), { targetWeight: 0.5 });
+    const b = makeAsset("B", growingSeries("2018-01-01", 900, 100, 120), { targetWeight: 0.5 });
+
+    const result = runBacktest(
+      makeInput(
+        [a, b],
+        makeParams({
+          initialAmount: 5_000,
+          monthlyContribution: 200,
+          fees: DEFAULT_FEES,
+          rebalancing: { period: "quarterly", thresholdEnabled: true, thresholdPoints: 5 },
+        }),
+      ),
+    );
+
+    const rows = result.assetPerformance;
+    const { metrics } = result;
+
+    expect(metrics.fees.total).toBeGreaterThan(0);
+    expect(sum(rows, "invested")).toBeCloseTo(metrics.totalInvested, 6);
+    expect(sum(rows, "finalValue")).toBeCloseTo(metrics.finalValue, 6);
+    expect(sum(rows, "gain")).toBeCloseTo(metrics.totalGain, 6);
+    expect(rows.reduce((t, r) => t + r.finalWeight, 0)).toBeCloseTo(1, 6);
+  });
+
+  it("rapporte la performance propre du support, indépendante des montants", () => {
+    // La ligne ne reçoit que 10 % du capital, mais le support double : sa
+    // performance propre vaut 100 %, quel que soit le montant engagé.
+    const a = makeAsset("A", growingSeries("2020-01-01", 400, 100, 200), { targetWeight: 0.1 });
+    const b = makeAsset("B", constantSeries("2020-01-01", 400, 100), { targetWeight: 0.9 });
+
+    const result = runBacktest(
+      makeInput([a, b], makeParams({ initialAmount: 10_000 })),
+    );
+
+    const rowA = result.assetPerformance.find((r) => r.assetId === "A")!;
+    expect(rowA.assetReturn).toBeCloseTo(1, 6);
+    expect(rowA.invested).toBeCloseTo(1_000, 6);
+    expect(rowA.gain).toBeCloseTo(1_000, 6);
+    expect(rowA.gainShare).toBeCloseTo(1, 6); // seule ligne à produire du gain
+  });
+
+  it("n'attribue aucune part de gain quand le portefeuille en manque", () => {
+    // Rapporter une part à un total nul ou négatif produirait des pourcentages
+    // aberrants ; on préfère l'absence de valeur.
+    const a = makeAsset("A", growingSeries("2020-01-01", 400, 100, 60));
+
+    const result = runBacktest(
+      makeInput([a], makeParams({ initialAmount: 10_000 })),
+    );
+
+    expect(result.metrics.totalGain).toBeLessThan(0);
+    expect(result.assetPerformance[0].gainShare).toBeNull();
+  });
+
+  it("décompose le montant investi en versements et rééquilibrages", () => {
+    // Une ligne qui monte beaucoup est allégée à chaque rééquilibrage. Ses
+    // retraits peuvent dépasser ses apports, et le net devient négatif — le cas
+    // qui rend le seul chiffre net incompréhensible sans sa décomposition.
+    const fusee = makeAsset("FUSEE", growingSeries("2015-01-01", 1200, 100, 6000), {
+      targetWeight: 0.05,
+    });
+    const calme = makeAsset("CALME", growingSeries("2015-01-01", 1200, 100, 130), {
+      targetWeight: 0.95,
+    });
+
+    const result = runBacktest(
+      makeInput(
+        [fusee, calme],
+        makeParams({
+          initialAmount: 1_000,
+          monthlyContribution: 300,
+          rebalancing: { period: "quarterly", thresholdEnabled: false, thresholdPoints: 5 },
+        }),
+      ),
+    );
+
+    const rows = result.assetPerformance;
+    const { metrics } = result;
+
+    // Les versements se répartissent exactement au poids cible.
+    expect(sum(rows, "contributed")).toBeCloseTo(metrics.totalInvested, 6);
+    expect(rows.find((r) => r.assetId === "FUSEE")!.contributed).toBeCloseTo(
+      metrics.totalInvested * 0.05,
+      6,
+    );
+
+    // Rééquilibrer ne fait entrer aucun argent neuf : somme nulle.
+    expect(sum(rows, "rebalancingFlow")).toBeCloseTo(0, 6);
+
+    // Et la décomposition reconstitue bien le net, ligne par ligne.
+    for (const row of rows) {
+      expect(row.contributed + row.rebalancingFlow).toBeCloseTo(row.invested, 6);
+    }
+
+    // La ligne fusée a été allégée bien au-delà de ce qu'elle a reçu.
+    const fuseeRow = rows.find((r) => r.assetId === "FUSEE")!;
+    expect(fuseeRow.rebalancingFlow).toBeLessThan(0);
+    expect(fuseeRow.invested).toBeLessThan(0);
+  });
+
+  it("déflate aussi la référence, pas seulement le portefeuille", () => {
+    // C'est le point : confronter une courbe en euros constants à un indice en
+    // euros courants, sur le graphique même censé les comparer, avantage
+    // l'indice d'exactement l'inflation de la période.
+    const days = 10 * 365;
+    const prices = constantSeries("2010-01-01", days, 100);
+
+    const result = runBacktest(
+      makeInput(
+        [makeAsset("A", prices)],
+        makeParams({ initialAmount: 10_000, realReturns: true }),
+        {
+          inflation: geometricIndex("2010-01-01", 121, 100, 200),
+          benchmark: {
+            id: "REF",
+            ticker: "REF",
+            label: "Référence",
+            currency: "EUR",
+            prices: growingSeries("2010-01-01", days, 100, 200),
+          },
+        },
+      ),
+    );
+
+    const points = result.series.benchmark!;
+    const last = points[points.length - 1];
+
+    // La référence double en nominal : 10 000 € deviennent 20 000 €.
+    expect(last.value).toBeCloseTo(20_000, 0);
+    // Les prix ayant doublé eux aussi, elle stagne en pouvoir d'achat.
+    expect(last.realValue).toBeCloseTo(10_000, 0);
+    expect(points[0].realValue).toBeCloseTo(points[0].value, 6);
+  });
+
+  it("laisse la référence intacte quand le rendement réel n'est pas demandé", () => {
+    const prices = constantSeries("2010-01-01", 500, 100);
+    const result = runBacktest(
+      makeInput([makeAsset("A", prices)], makeParams({ initialAmount: 10_000 }), {
+        benchmark: {
+          id: "REF",
+          ticker: "REF",
+          label: "Référence",
+          currency: "EUR",
+          prices: growingSeries("2010-01-01", 500, 100, 150),
+        },
+      }),
+    );
+
+    expect(result.series.benchmark![0].realValue).toBeUndefined();
+  });
+
+  it("annualise la performance du support sur la durée simulée", () => {
+    // Un support qui double sur exactement dix ans : 2^(1/10) − 1 ≈ 7,177 %.
+    const days = 10 * 365;
+    const a = makeAsset("A", growingSeries("2010-01-01", days, 100, 200));
+
+    const result = runBacktest(
+      makeInput([a], makeParams({ initialAmount: 10_000 })),
+    );
+
+    const row = result.assetPerformance[0];
+    const years = result.metrics.effectiveYears;
+
+    expect(row.assetReturn).toBeCloseTo(1, 6);
+    expect(row.assetAnnualReturn).toBeCloseTo(Math.pow(2, 1 / years) - 1, 6);
+
+    // Sur un seul actif sans frais, l'annualisé de la ligne rejoint le CAGR du
+    // portefeuille : c'est le contrôle qui garantit qu'on n'a pas confondu les
+    // deux bases de composition.
+    expect(row.assetAnnualReturn).toBeCloseTo(result.metrics.cagr, 4);
+  });
+
+  it("déflate chaque flux à sa date pour la version en euros constants", () => {
+    const days = 10 * 365;
+    const a = makeAsset("A", constantSeries("2010-01-01", days, 100));
+
+    const result = runBacktest(
+      makeInput(
+        [a],
+        makeParams({
+          initialAmount: 1_000,
+          monthlyContribution: 100,
+          realReturns: true,
+        }),
+        { inflation: geometricIndex("2010-01-01", 121, 100, 200) },
+      ),
+    );
+
+    const reel = result.assetPerformanceReal!;
+    expect(reel).toHaveLength(1);
+    expect(sum(reel, "invested")).toBeCloseTo(result.metrics.real!.totalInvested, 6);
+    expect(sum(reel, "finalValue")).toBeCloseTo(result.metrics.real!.finalValue, 6);
+    expect(sum(reel, "gain")).toBeCloseTo(result.metrics.real!.totalGain, 6);
+
+    // Prix figé : la performance propre du support est nulle en nominal et
+    // négative une fois l'inflation retirée.
+    expect(result.assetPerformance[0].assetReturn).toBeCloseTo(0, 6);
+    expect(reel[0].assetReturn).toBeCloseTo(-0.5, 2);
+  });
+});
+
+function sum(
+  rows: readonly AssetPerformance[],
+  key: "invested" | "finalValue" | "gain" | "contributed" | "rebalancingFlow",
+): number {
+  return rows.reduce((total, row) => total + row[key], 0);
+}

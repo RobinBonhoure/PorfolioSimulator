@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { assets, type Asset } from "@/lib/db/schema";
@@ -97,6 +97,26 @@ function dominantOf(breakdown: Record<string, number> | null): string | null {
   return best;
 }
 
+function toCatalogAsset(row: Asset): CatalogAsset {
+  return {
+    id: row.id,
+    tickerYahoo: row.tickerYahoo,
+    isin: row.isin,
+    name: row.name,
+    shortLabel: row.shortLabel,
+    type: row.type,
+    peaEligible: row.peaEligible,
+    ter: row.ter,
+    currency: row.currency,
+    dataPartial: row.dataPartial,
+    assetClass: row.assetClass,
+    avgVolume: row.avgVolume,
+    trackedIndex: row.trackedIndex,
+    topGeo: dominantOf(row.geoBreakdown),
+    topSector: dominantOf(row.sectorBreakdown),
+  };
+}
+
 /**
  * Catalogue complet, pour la navigation par filtres.
  *
@@ -117,23 +137,30 @@ export async function listCatalogAssets(): Promise<CatalogAsset[]> {
     .where(eq(assets.isCatalog, true))
     .orderBy(asc(assets.type), asc(assets.shortLabel));
 
-  return rows.map((row) => ({
-    id: row.id,
-    tickerYahoo: row.tickerYahoo,
-    isin: row.isin,
-    name: row.name,
-    shortLabel: row.shortLabel,
-    type: row.type,
-    peaEligible: row.peaEligible,
-    ter: row.ter,
-    currency: row.currency,
-    dataPartial: row.dataPartial,
-    assetClass: row.assetClass,
-    avgVolume: row.avgVolume,
-    trackedIndex: row.trackedIndex,
-    topGeo: dominantOf(row.geoBreakdown),
-    topSector: dominantOf(row.sectorBreakdown),
-  }));
+  return rows.map(toCatalogAsset);
+}
+
+/**
+ * Actifs désignés par leur identifiant, catalogue ou non.
+ *
+ * Sert à afficher une sélection restaurée : un actif ajouté depuis Yahoo n'est
+ * pas au catalogue, et le chercher dans la liste chargée pour la navigation le
+ * ferait apparaître sans nom.
+ */
+export async function listAssetsByIds(
+  ids: readonly string[],
+): Promise<CatalogAsset[]> {
+  if (ids.length === 0) return [];
+
+  const rows = await db.select().from(assets).where(inArray(assets.id, ids));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+
+  // Réaligné sur l'ordre demandé : c'est lui qui fixe les couleurs et l'ordre
+  // des colonnes de la comparaison.
+  return ids
+    .map((id) => byId.get(id))
+    .filter((row): row is Asset => row !== undefined)
+    .map(toCatalogAsset);
 }
 
 /** Actifs d'une stratégie, proxy résolu, prêts à alimenter le moteur. */

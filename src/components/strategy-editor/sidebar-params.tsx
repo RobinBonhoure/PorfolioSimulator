@@ -118,12 +118,18 @@ export function SidebarParams({
   values,
   onChange,
   includeName = true,
+  includeTaxation = true,
+  includeBenchmark = true,
 }: {
   values: StrategyFormValues;
   onChange: (patch: Partial<StrategyFormValues>) => void;
   /** Mettre à faux quand le nom est saisi ailleurs — l'écran de création lui
    *  donne sa propre place, en tête de page. */
   includeName?: boolean;
+  /** L'écran de comparaison n'affiche ni fiscalité ni référence : un réglage
+   *  visible qui ne change rien à l'écran est pire qu'un réglage absent. */
+  includeTaxation?: boolean;
+  includeBenchmark?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -171,7 +177,9 @@ export function SidebarParams({
             <Label htmlFor="years" className="text-xs font-normal text-muted-foreground">
               Durée du backtest
             </Label>
-            <span className="tnum text-xs">{values.years} ans</span>
+            <span className="tnum text-xs">
+              {values.years} an{values.years > 1 ? "s" : ""}
+            </span>
           </div>
           <Slider
             id="years"
@@ -307,14 +315,17 @@ export function SidebarParams({
           checked={values.realReturns}
           onChange={(realReturns) => onChange({ realReturns })}
         />
-        <ToggleRow
-          id="taxation"
-          label="Fiscalité à la sortie"
-          hint="PEA contre compte-titres"
-          checked={values.taxation}
-          onChange={(taxation) => onChange({ taxation })}
-        />
+        {includeTaxation && (
+          <ToggleRow
+            id="taxation"
+            label="Fiscalité à la sortie"
+            hint="PEA contre compte-titres"
+            checked={values.taxation}
+            onChange={(taxation) => onChange({ taxation })}
+          />
+        )}
 
+        {includeBenchmark && (
         <div className="flex items-center justify-between gap-2">
           <Label className="text-xs font-normal text-muted-foreground">
             Référence
@@ -337,6 +348,7 @@ export function SidebarParams({
             </SelectContent>
           </Select>
         </div>
+        )}
       </section>
     </div>
   );

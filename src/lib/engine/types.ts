@@ -141,6 +141,16 @@ export interface EngineInput {
   /** Séries de change indexées par devise. L'EUR n'y figure pas. */
   fx: Record<string, FxPoint[]>;
   inflation?: InflationPoint[];
+  /**
+   * Borne basse imposée. Par défaut, `endDate` moins `params.years`.
+   *
+   * Sert à rejouer plusieurs allocations sur une fenêtre strictement identique :
+   * la comparaison s'en sert pour que tout le monde parte le même jour, avec le
+   * même capital initial et le même échéancier de versements. Ne fait que
+   * repousser le départ — un actif dont l'historique commence plus tard démarre
+   * toujours à sa première cotation.
+   */
+  startDate?: IsoDate;
   /** Borne haute de la simulation. Par défaut, la dernière date commune. */
   endDate?: IsoDate;
 }
@@ -243,6 +253,58 @@ export interface RealMetrics {
   annualInflation: number;
 }
 
+/**
+ * Ce que chaque ligne a apporté au portefeuille.
+ *
+ * Les colonnes s'additionnent exactement : la somme des montants investis vaut
+ * le capital versé, et la somme des gains vaut le gain total. C'est la
+ * condition pour qu'un tableau par actif serve à quelque chose — un tableau
+ * dont les lignes ne font pas le total invite surtout à se méfier de tout le
+ * reste.
+ *
+ * Trois grandeurs distinctes, dont la confusion est la source d'incompréhension
+ * la plus prévisible de ce tableau :
+ *
+ * - `contributed` : l'argent venu de la poche de l'investisseur, réparti au
+ *   poids cible. Toujours positif.
+ * - `rebalancingFlow` : ce que les rééquilibrages ont ajouté ou retiré à la
+ *   ligne. Signé, et sa somme sur toutes les lignes vaut exactement zéro —
+ *   rééquilibrer ne fait entrer aucun argent neuf.
+ * - `invested` : la somme des deux. C'est elle qui, retranchée de la valeur,
+ *   donne le gain de la ligne.
+ *
+ * Une ligne qui monte fort est allégée à chaque rééquilibrage. Ses retraits
+ * cumulés peuvent dépasser ses apports, auquel cas `invested` devient négatif :
+ * la ligne a rendu au portefeuille plus qu'on n'y a versé. Ce n'est pas une
+ * anomalie, c'est ce que le rééquilibrage fait — mais c'est assez déroutant
+ * pour que l'interface doive montrer la décomposition, et non le seul net.
+ */
+export interface AssetPerformance {
+  assetId: string;
+  /** Somme des flux dirigés vers la ligne, frais d'ordre compris.
+   *  Vaut `contributed + rebalancingFlow`. */
+  invested: number;
+  /** Part des versements dirigée vers la ligne, au poids cible. */
+  contributed: number;
+  /** Apport net des rééquilibrages. Somme nulle sur l'ensemble des lignes. */
+  rebalancingFlow: number;
+  finalValue: number;
+  /** `finalValue - invested` : ce que la ligne a apporté au gain du portefeuille. */
+  gain: number;
+  /** Part du gain total du portefeuille, en fraction. `null` si le gain total
+   *  est nul ou négatif, auquel cas une part n'aurait pas de sens. */
+  gainShare: number | null;
+  /** Performance propre du support sur la période, indépendamment des montants
+   *  engagés et de leur calendrier. */
+  assetReturn: number;
+  /** La même, ramenée au rythme annuel. Seule grandeur qui permette de comparer
+   *  deux supports dont les historiques n'ont pas la même longueur. */
+  assetAnnualReturn: number;
+  /** Poids effectif au dernier jour, à comparer au poids cible. */
+  finalWeight: number;
+  targetWeight: number;
+}
+
 export interface BacktestMetrics {
   startDate: IsoDate;
   endDate: IsoDate;
@@ -297,7 +359,13 @@ export interface BacktestSeries {
   /** Valeur de chaque ligne, pour les aires empilées et l'évolution des poids. */
   byAsset: AssetSeriesPoint[];
   /** Benchmark rebasé sur le capital initial, pour la superposition. */
-  benchmark: { date: IsoDate; value: number }[] | null;
+  /** `realValue` n'est renseigné que si le rendement réel est demandé. La
+   *  référence est déflatée comme le portefeuille : la confronter en euros
+   *  courants à une courbe en euros constants la ferait paraître meilleure
+   *  qu'elle ne l'est, sur le graphique même censé les comparer. */
+  benchmark:
+    | { date: IsoDate; value: number; realValue?: number }[]
+    | null;
 }
 
 export interface BacktestResult {
@@ -311,4 +379,8 @@ export interface BacktestResult {
   usedProxyData: boolean;
   /** Ordre d'affichage stable des actifs (identifiants). */
   assetIds: string[];
+  /** Détail ligne par ligne, en euros courants. */
+  assetPerformance: AssetPerformance[];
+  /** Le même détail en euros constants, si le rendement réel est demandé. */
+  assetPerformanceReal?: AssetPerformance[];
 }

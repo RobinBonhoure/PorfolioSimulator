@@ -6,7 +6,7 @@ import { assets } from "@/lib/db/schema";
 import { BacktestError, runBacktest } from "@/lib/engine/run-backtest";
 import type { BacktestResult, StrategyParams } from "@/lib/engine/types";
 import { downsampleResult } from "./downsample";
-import { prepareEngineInput } from "./prepare-input";
+import { prepareEngineInput, type EngineWindow } from "./prepare-input";
 import type { ResultAssetInfo } from "./run-for-strategy";
 
 /**
@@ -26,6 +26,11 @@ export interface PreviewInput {
   params: StrategyParams;
   /** Poids en fraction, sommant à 1. */
   selection: readonly { assetId: string; targetWeight: number }[];
+  /** Mettre à faux pour obtenir les séries quotidiennes intégrales, dont la
+   *  comparaison a besoin pour aligner les courbes sur un calendrier commun. */
+  downsample?: boolean;
+  /** Fenêtre imposée, en remplacement de celle déduite de la durée. */
+  window?: EngineWindow | null;
 }
 
 export interface PreviewResponse {
@@ -61,6 +66,7 @@ export async function runBacktestPreview(
     selection: input.selection.map((entry) => ({ ...entry })),
     params: input.params,
     benchmarkTicker: input.params.benchmark,
+    window: input.window,
   });
 
   const result = runBacktest(prepared.input);
@@ -72,7 +78,7 @@ export async function runBacktestPreview(
   }
 
   return {
-    result: downsampleResult(result),
+    result: input.downsample === false ? result : downsampleResult(result),
     assets: input.selection.map((entry) => {
       const asset = byId.get(entry.assetId)!;
       return {

@@ -82,7 +82,11 @@ export function MainChart({
         invested: realMode
           ? (point.realInvested ?? point.invested)
           : point.invested,
-        benchmark: series.benchmark?.[index]?.value ?? null,
+        benchmark: realMode
+          ? (series.benchmark?.[index]?.realValue ??
+            series.benchmark?.[index]?.value ??
+            null)
+          : (series.benchmark?.[index]?.value ?? null),
         hasProxyData: point.hasProxyData,
       };
 

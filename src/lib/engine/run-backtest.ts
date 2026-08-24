@@ -32,6 +32,7 @@ import {
 import { computeTaxation } from "./taxation";
 import {
   type AssetInput,
+  type AssetPerformance,
   type AssetSeriesPoint,
   type BacktestResult,
   type BacktestSeries,
@@ -75,6 +76,8 @@ interface SimulationOutput {
   invested: number[];
   contributions: number[];
   valueByAsset: number[][];
+  /** Flux du jour vers chaque ligne, frais d'ordre inclus. */
+  flowByAsset: number[][];
   fees: FeeBreakdown;
 }
 
@@ -165,6 +168,16 @@ function simulate(
   const invested: number[] = new Array(dayCount).fill(0);
   const contributions: number[] = new Array(dayCount).fill(0);
   const valueByAsset: number[][] = [];
+  // Flux du jour vers chaque ligne, frais d'ordre compris.
+  //
+  // Compter le montant **brut** — celui prélevé sur le versement, avant
+  // déduction du courtage et du spread — est ce qui rend le tableau par actif
+  // cohérent : la somme des flux égale alors exactement le capital versé, et le
+  // coût de l'ordre apparaît en moins-value sur la ligne qui l'a supporté,
+  // plutôt que de s'évaporer.
+  const flowByAsset: number[][] = Array.from({ length: dayCount }, () =>
+    new Array<number>(assetCount).fill(0),
+  );
 
   const feeTotals: FeeBreakdown = { ter: 0, brokerage: 0, spread: 0, total: 0 };
 
@@ -179,6 +192,7 @@ function simulate(
       const cost = orderCost(gross, fees);
       feeTotals.brokerage += cost.brokerage;
       feeTotals.spread += cost.spread;
+      flowByAsset[dayIndex][a] += gross;
 
       const price = prepared[a].eurPrices[dayIndex];
       units[a] += (gross - cost.total) / price;
@@ -278,6 +292,7 @@ function simulate(
       // le portefeuille atteint exactement les poids cibles, sur une base
       // amputée du coût de l'opération.
       let tradingCost = 0;
+      const costByAsset = new Array<number>(assetCount).fill(0);
       for (let a = 0; a < assetCount; a += 1) {
         const delta = Math.abs(targets[a] * total - currentValues[a]);
         if (delta <= 0) continue;
@@ -285,11 +300,18 @@ function simulate(
         const cost = orderCost(delta, fees);
         feeTotals.brokerage += cost.brokerage;
         feeTotals.spread += cost.spread;
+        costByAsset[a] = cost.total;
         tradingCost += cost.total;
       }
 
       const rebalanced = total - tradingCost;
       for (let a = 0; a < assetCount; a += 1) {
+        // Le rééquilibrage ne fait entrer aucun argent neuf : les flux qu'il
+        // engendre s'annulent d'une ligne à l'autre. Chaque ligne se voit en
+        // revanche imputer le coût de son propre ordre, qui ressortira en
+        // moins-value chez elle et non dans un total anonyme.
+        flowByAsset[i][a] +=
+          targets[a] * rebalanced - currentValues[a] + costByAsset[a];
         units[a] = (targets[a] * rebalanced) / prepared[a].eurPrices[i];
       }
     }
@@ -299,7 +321,14 @@ function simulate(
 
   feeTotals.total = feeTotals.ter + feeTotals.brokerage + feeTotals.spread;
 
-  return { values, invested, contributions, valueByAsset, fees: feeTotals };
+  return {
+    values,
+    invested,
+    contributions,
+    valueByAsset,
+    flowByAsset,
+    fees: feeTotals,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +372,9 @@ export function runBacktest(input: EngineInput): BacktestResult {
   let endDate = lastDates.reduce((min, d) => (d < min ? d : min));
   if (input.endDate && input.endDate < endDate) endDate = input.endDate;
 
-  const requestedStart = shiftYears(endDate, -params.years);
+  // Une borne imposée prime sur la durée demandée : c'est ce qui permet de
+  // rejouer plusieurs allocations sur exactement la même fenêtre.
+  const requestedStart = input.startDate ?? shiftYears(endDate, -params.years);
 
   /** Première date exploitable d'un actif, contraintes de change comprises. */
   const earliestUsable = (asset: AssetInput): IsoDate => {
@@ -556,7 +587,12 @@ export function runBacktest(input: EngineInput): BacktestResult {
   const series: BacktestSeries = {
     portfolio,
     byAsset,
-    benchmark: buildBenchmarkSeries(input, calendar, params.initialAmount),
+    benchmark: buildBenchmarkSeries(
+      input,
+      calendar,
+      params.initialAmount,
+      deflators,
+    ),
   };
 
   const analytics: AnalyticsResult = {
@@ -573,7 +609,36 @@ export function runBacktest(input: EngineInput): BacktestResult {
     monthlyPortfolioReturns: buildMonthlyPortfolioReturns(index, calendar),
   };
 
-  return { metrics, series, analytics, youngAssets, usedProxyData, assetIds };
+  const assetPerformance = buildAssetPerformance({
+    prepared,
+    run,
+    finalValue,
+    totalGain: finalValue - totalInvested,
+    totalInvested,
+    effectiveYears,
+    deflators: null,
+  });
+
+  return {
+    metrics,
+    series,
+    analytics,
+    youngAssets,
+    usedProxyData,
+    assetIds,
+    assetPerformance,
+    assetPerformanceReal: deflators
+      ? buildAssetPerformance({
+          prepared,
+          run,
+          finalValue: finalValue * deflators[deflators.length - 1],
+          totalGain: metrics.real!.totalGain,
+          totalInvested: metrics.real!.totalInvested,
+          effectiveYears,
+          deflators,
+        })
+      : undefined,
+  };
 }
 
 /** Benchmark rebasé sur le capital initial, pour une superposition lisible. */
@@ -581,6 +646,7 @@ function buildBenchmarkSeries(
   input: EngineInput,
   calendar: readonly IsoDate[],
   initialAmount: number,
+  deflators: readonly number[] | null,
 ): BacktestSeries["benchmark"] {
   const benchmark = input.benchmark;
   if (!benchmark || benchmark.prices.length === 0) return null;
@@ -593,11 +659,14 @@ function buildBenchmarkSeries(
 
   const base = filled[firstIndex]! * fxRates[firstIndex];
 
-  return calendar.map((date, i) => ({
-    date,
-    value:
-      filled[i] === null ? 0 : (filled[i]! * fxRates[i] * initialAmount) / base,
-  }));
+  return calendar.map((date, i) => {
+    const value =
+      filled[i] === null ? 0 : (filled[i]! * fxRates[i] * initialAmount) / base;
+
+    return deflators
+      ? { date, value, realValue: value * deflators[i] }
+      : { date, value };
+  });
 }
 
 /** Décale une date d'un nombre entier d'années, en conservant le jour du mois. */
@@ -702,4 +771,76 @@ function realMetricsOf(input: {
     annualInflation,
     ...returnMetrics(realReturns, input.calendar, effectiveYears, realRiskFree),
   };
+}
+
+
+/**
+ * Détail ligne par ligne.
+ *
+ * Le montant investi sur une ligne est la somme des flux qui y ont été
+ * dirigés — versements répartis au poids cible, mouvements de rééquilibrage, et
+ * frais d'ordre imputés à la ligne qui les a provoqués. Sa différence avec la
+ * valeur finale donne exactement ce que la ligne a apporté, frais de gestion
+ * compris, sans qu'aucun euro ne se perde en route : la somme des montants
+ * investis vaut le capital versé, et la somme des gains vaut le gain total.
+ *
+ * En euros constants, chaque flux est déflaté à **sa** date. Appliquer le
+ * déflateur terminal à un cumul traiterait le versement du mois dernier comme
+ * s'il datait du premier jour.
+ */
+function buildAssetPerformance(input: {
+  prepared: readonly PreparedAsset[];
+  run: SimulationOutput;
+  finalValue: number;
+  totalGain: number;
+  totalInvested: number;
+  effectiveYears: number;
+  deflators: readonly number[] | null;
+}): AssetPerformance[] {
+  const { prepared, run, deflators } = input;
+  const dayCount = run.flowByAsset.length;
+  const lastDay = dayCount - 1;
+  const terminal = deflators ? deflators[lastDay] : 1;
+
+  return prepared.map((asset, a) => {
+    let invested = 0;
+    for (let i = 0; i < dayCount; i += 1) {
+      invested += run.flowByAsset[i][a] * (deflators ? deflators[i] : 1);
+    }
+
+    // Les versements sont répartis au poids cible, constant : la part d'une
+    // ligne vaut donc exactement le capital versé multiplié par son poids, sans
+    // qu'il faille en tenir un second compte jour par jour. Ce qui reste de
+    // l'écart avec le flux total vient des rééquilibrages.
+    const contributed = input.totalInvested * asset.input.targetWeight;
+
+    const finalValue = run.valueByAsset[lastDay][a] * terminal;
+    const gain = finalValue - invested;
+
+    const firstPrice = asset.eurPrices[0];
+    const lastPrice = asset.eurPrices[lastDay];
+    const nominalReturn = firstPrice > 0 ? lastPrice / firstPrice - 1 : 0;
+    const assetReturn = deflators
+      ? (1 + nominalReturn) * terminal - 1
+      : nominalReturn;
+
+    return {
+      assetId: asset.input.id,
+      invested,
+      contributed,
+      rebalancingFlow: invested - contributed,
+      finalValue,
+      gain,
+      // Une part de gain n'a de sens que si le portefeuille en a dégagé un.
+      // Rapportée à un total nul ou négatif, elle produirait des pourcentages
+      // aberrants — 300 % du gain, ou une part négative pour une ligne
+      // gagnante.
+      gainShare: input.totalGain > 0 ? gain / input.totalGain : null,
+      assetReturn,
+      assetAnnualReturn: annualizedReturn(1 + assetReturn, input.effectiveYears),
+      finalWeight:
+        input.finalValue > 0 ? run.valueByAsset[lastDay][a] * terminal / input.finalValue : 0,
+      targetWeight: asset.input.targetWeight,
+    };
+  });
 }
