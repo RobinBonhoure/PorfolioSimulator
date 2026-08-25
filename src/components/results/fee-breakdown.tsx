@@ -74,7 +74,7 @@ export function FeeBreakdown({ metrics }: { metrics: BacktestMetrics }) {
         </TableBody>
       </Table>
 
-      <div className="rounded-md border p-3">
+      <div className="rounded-xl border p-3">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-sm">Manque à gagner total</span>
           <span className="tnum text-lg font-semibold text-[var(--neg-text)]">

@@ -55,7 +55,7 @@ export function YoungAssetDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ul className="space-y-1.5 rounded-md border p-3 text-sm">
+        <ul className="space-y-1.5 rounded-xl border p-3 text-sm">
           {youngAssets.map((asset) => (
             <li key={asset.assetId} className="flex items-center gap-2">
               <CalendarClock className="size-3.5 shrink-0 text-muted-foreground" />
@@ -73,7 +73,7 @@ export function YoungAssetDialog({
         </ul>
 
         <div className="space-y-3 text-sm">
-          <div className="rounded-md border p-3">
+          <div className="rounded-xl border p-3">
             <p className="font-medium">Démarrer au {formatDate(effectiveStartDate)}</p>
             <p className="text-muted-foreground">
               Le backtest ne porte que sur la période réellement couverte par
@@ -82,7 +82,7 @@ export function YoungAssetDialog({
             </p>
           </div>
 
-          <div className="rounded-md border p-3">
+          <div className="rounded-xl border p-3">
             <p className="font-medium">
               Compléter avec un indice de substitution
             </p>

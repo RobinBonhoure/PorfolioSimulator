@@ -6,7 +6,6 @@ import {
   AreaChart,
   CartesianGrid,
   Line,
-  LineChart,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
@@ -129,7 +128,7 @@ export function MainChart({
   const legendItems =
     mode === "value"
       ? [
-          { label: "Portefeuille", color: "var(--series-1)" },
+          { label: "Portefeuille", color: "var(--primary)" },
           { label: "Capital investi", color: REFERENCE_COLORS.invested, dashed: true },
           ...(benchmarkLabel
             ? [{ label: benchmarkLabel, color: REFERENCE_COLORS.benchmark, dashed: true }]
@@ -154,7 +153,7 @@ export function MainChart({
     const rows =
       mode === "value"
         ? [
-            { label: "Portefeuille", value: formatEur(point.value), color: "var(--series-1)" },
+            { label: "Portefeuille", value: formatEur(point.value), color: "var(--primary)" },
             {
               label: "Capital investi",
               value: formatEur(point.invested),
@@ -233,12 +232,19 @@ export function MainChart({
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           {mode === "value" ? (
-            <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="portfolio-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="var(--primary)" stopOpacity={0.16} />
+                  <stop offset="1" stopColor="var(--primary)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               {axes}
-              <Line
+              <Area
                 dataKey="value"
-                stroke="var(--series-1)"
-                strokeWidth={2}
+                stroke="var(--primary)"
+                strokeWidth={2.5}
+                fill="url(#portfolio-fill)"
                 dot={false}
                 isAnimationActive={false}
               />
@@ -261,7 +267,7 @@ export function MainChart({
                   connectNulls
                 />
               )}
-            </LineChart>
+            </AreaChart>
           ) : (
             <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
               {axes}

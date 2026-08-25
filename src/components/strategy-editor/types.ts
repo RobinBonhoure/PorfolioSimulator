@@ -6,6 +6,8 @@ export interface EditorAsset {
   assetId: string;
   tickerYahoo: string;
   shortLabel: string;
+  /** Nom complet, émetteur compris : « Amundi MSCI World UCITS ETF ». */
+  name: string;
   type: Asset["type"];
   peaEligible: boolean | null;
   /** Frais courants en fraction, `null` si non applicable (action, crypto). */

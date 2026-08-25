@@ -73,6 +73,7 @@ export function AssetSearchBar({
                   assetId: result.id,
                   tickerYahoo: result.tickerYahoo,
                   shortLabel: result.shortLabel,
+                  name: result.name,
                   type: result.type,
                   peaEligible: result.peaEligible,
                   ter: result.ter === null ? null : Number(result.ter),

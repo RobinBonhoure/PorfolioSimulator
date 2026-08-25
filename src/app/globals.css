@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-bricolage);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -73,25 +73,27 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Direction « Chaleureux » : surfaces crème, encre brun foncé, vert sauge en
+   couleur d'action. La surface claire est la référence de calibrage. */
 :root {
-  --background: #f9f9f7;
-  --foreground: #0b0b0b;
-  --card: #fcfcfb;
-  --card-foreground: #0b0b0b;
-  --popover: #fcfcfb;
-  --popover-foreground: #0b0b0b;
-  --primary: #1f1f1d;
-  --primary-foreground: #fcfcfb;
-  --secondary: #efefec;
-  --secondary-foreground: #1f1f1d;
-  --muted: #efefec;
-  --muted-foreground: #6b6a66;
-  --accent: #efefec;
-  --accent-foreground: #1f1f1d;
-  --destructive: #b91c1c;
-  --border: rgb(11 11 11 / 0.12);
-  --input: rgb(11 11 11 / 0.16);
-  --ring: #898781;
+  --background: #faf6ee;
+  --foreground: #33302a;
+  --card: #fffdf8;
+  --card-foreground: #33302a;
+  --popover: #fffdf8;
+  --popover-foreground: #33302a;
+  --primary: #1f7a5c;
+  --primary-foreground: #ffffff;
+  --secondary: #eee7d8;
+  --secondary-foreground: #33302a;
+  --muted: #f3eee1;
+  --muted-foreground: #6f6a5e;
+  --accent: #eee7d8;
+  --accent-foreground: #33302a;
+  --destructive: #b1452f;
+  --border: rgb(51 48 42 / 0.14);
+  --input: rgb(51 48 42 / 0.2);
+  --ring: #948e80;
 
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -102,50 +104,52 @@
   --series-7: #4a3aa7;
   --series-8: #e34948;
 
-  --pos: #0ca30c;
-  --neg: #d03b3b;
-  --pos-text: #006300;
-  --neg-text: #b91c1c;
+  --pos: #1f9d61;
+  --neg: #c94b34;
+  --pos-text: #17614a;
+  --neg-text: #b1452f;
 
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
+  --grid: #eae4d5;
+  --axis: #cfc8b6;
 
-  --score-1: #d03b3b;
-  --score-2: #ec835a;
-  --score-3: #fab219;
+  --score-1: #c94b34;
+  --score-2: #e0793f;
+  --score-3: #d9a13f;
   --score-4: #7cb342;
-  --score-5: #0ca30c;
+  --score-5: #1f9d61;
 
-  --radius: 0.5rem;
-  --sidebar: #fcfcfb;
-  --sidebar-foreground: #0b0b0b;
-  --sidebar-primary: #1f1f1d;
-  --sidebar-primary-foreground: #fcfcfb;
-  --sidebar-accent: #efefec;
-  --sidebar-accent-foreground: #1f1f1d;
-  --sidebar-border: rgb(11 11 11 / 0.12);
-  --sidebar-ring: #898781;
+  --radius: 0.75rem;
+  --sidebar: #fffdf8;
+  --sidebar-foreground: #33302a;
+  --sidebar-primary: #1f7a5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eee7d8;
+  --sidebar-accent-foreground: #33302a;
+  --sidebar-border: rgb(51 48 42 / 0.14);
+  --sidebar-ring: #948e80;
 }
 
+/* Sombre chaleureux : mêmes teintes de base réchauffées, le vert sauge reste
+   la couleur d'action mais éclairci pour tenir le contraste sur brun sombre. */
 .dark {
-  --background: #0d0d0d;
-  --foreground: #ffffff;
-  --card: #1a1a19;
-  --card-foreground: #ffffff;
-  --popover: #1a1a19;
-  --popover-foreground: #ffffff;
-  --primary: #ededea;
-  --primary-foreground: #1a1a19;
-  --secondary: #272725;
-  --secondary-foreground: #ffffff;
-  --muted: #272725;
-  --muted-foreground: #9d9c95;
-  --accent: #272725;
-  --accent-foreground: #ffffff;
-  --destructive: #e66767;
-  --border: rgb(255 255 255 / 0.12);
-  --input: rgb(255 255 255 / 0.16);
-  --ring: #6f6e69;
+  --background: #14120e;
+  --foreground: #f4f0e6;
+  --card: #1e1b16;
+  --card-foreground: #f4f0e6;
+  --popover: #1e1b16;
+  --popover-foreground: #f4f0e6;
+  --primary: #35a37c;
+  --primary-foreground: #ffffff;
+  --secondary: #2b2721;
+  --secondary-foreground: #f4f0e6;
+  --muted: #2b2721;
+  --muted-foreground: #a49d8e;
+  --accent: #2b2721;
+  --accent-foreground: #f4f0e6;
+  --destructive: #e07a5f;
+  --border: rgb(244 240 230 / 0.12);
+  --input: rgb(244 240 230 / 0.16);
+  --ring: #746e60;
 
   /* Mêmes huit teintes, pas d'inversion automatique :
      chaque pas est choisi pour la surface sombre. */
@@ -158,28 +162,28 @@
   --series-7: #9085e9;
   --series-8: #e66767;
 
-  --pos: #0ca30c;
-  --neg: #d03b3b;
-  --pos-text: #0ca30c;
-  --neg-text: #e66767;
+  --pos: #2eb578;
+  --neg: #d96a50;
+  --pos-text: #55c491;
+  --neg-text: #e08a72;
 
-  --grid: #2c2c2a;
-  --axis: #383835;
+  --grid: #2b2822;
+  --axis: #3a362d;
 
-  --score-1: #d03b3b;
-  --score-2: #ec835a;
-  --score-3: #fab219;
-  --score-4: #7cb342;
-  --score-5: #0ca30c;
+  --score-1: #d96a50;
+  --score-2: #e0925a;
+  --score-3: #d9a13f;
+  --score-4: #8bc34a;
+  --score-5: #2eb578;
 
-  --sidebar: #1a1a19;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ededea;
-  --sidebar-primary-foreground: #1a1a19;
-  --sidebar-accent: #272725;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.12);
-  --sidebar-ring: #6f6e69;
+  --sidebar: #1e1b16;
+  --sidebar-foreground: #f4f0e6;
+  --sidebar-primary: #35a37c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2b2721;
+  --sidebar-accent-foreground: #f4f0e6;
+  --sidebar-border: rgb(244 240 230 / 0.12);
+  --sidebar-ring: #746e60;
 }
 
 @layer base {
@@ -191,6 +195,14 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Les titres portent la voix de la marque ; le texte courant reste en Nunito
+     pour la lecture longue. Les composants qui veulent la typo de titre sur un
+     span utilisent la classe `font-heading`. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-bricolage), var(--font-sans), sans-serif;
   }
   /* Les colonnes de chiffres doivent s'aligner verticalement : c'est un
      outil de lecture de tableaux, pas une page marketing. */

@@ -24,7 +24,7 @@ export function TaxationPanel({
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div
-          className={`rounded-lg border p-3 ${
+          className={`rounded-xl border p-3 ${
             taxation.peaEligible ? "border-[var(--pos)]/40" : ""
           }`}
         >
@@ -43,7 +43,7 @@ export function TaxationPanel({
           </p>
         </div>
 
-        <div className="rounded-lg border p-3">
+        <div className="rounded-xl border p-3">
           <p className="text-xs text-muted-foreground">
             Compte-titres — forfait unique 30 %
           </p>
@@ -57,7 +57,7 @@ export function TaxationPanel({
       </div>
 
       {!taxation.peaEligible && (
-        <p className="flex items-start gap-2 rounded-md border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-3 text-sm">
+        <p className="flex items-start gap-2 rounded-xl border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-3 text-sm">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[var(--score-3)]" />
           <span>
             Cette stratégie n&apos;est pas logeable en PEA à cause de :{" "}

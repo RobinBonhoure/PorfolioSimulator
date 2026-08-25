@@ -179,7 +179,7 @@ export function ProjectionPanel({
 
   if (projection.error || !projection.value) {
     return (
-      <p className="flex items-start gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+      <p className="flex items-start gap-2 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" />
         {projection.error}
       </p>
@@ -322,7 +322,7 @@ export function ProjectionPanel({
       </div>
 
       {/* L'écart, pas la médiane */}
-      <div className="rounded-lg border p-4">
+      <div className="rounded-xl border p-4">
         <p className="text-sm">
           En démarrant aujourd&apos;hui
           {initialAmount > 0 ? ` avec ${formatEur(initialAmount)}` : " de zéro"}
@@ -347,7 +347,7 @@ export function ProjectionPanel({
         </p>
 
         {spread > EXTREME_SPREAD && (
-          <p className="mt-3 flex items-start gap-2 rounded-md border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-2.5 text-xs">
+          <p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-2.5 text-xs">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-[var(--score-3)]" />
             <span>
               Cet éventail est si large qu&apos;il n&apos;apprend pas
@@ -403,7 +403,7 @@ export function ProjectionPanel({
           décomposition, il faut faire la soustraction de tête, avec en prime
           le piège du passage des euros courants aux euros constants. */}
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border px-3 py-2">
+        <div className="rounded-xl border px-3 py-2">
           <dt className="text-[11px] text-muted-foreground">Capital engagé</dt>
           <dd className="tnum text-lg font-semibold">
             {formatEur(result.totalInvested)}
@@ -413,7 +413,7 @@ export function ProjectionPanel({
           </dd>
         </div>
 
-        <div className="rounded-lg border px-3 py-2">
+        <div className="rounded-xl border px-3 py-2">
           <dt className="text-[11px] text-muted-foreground">Gain médian</dt>
           <dd
             className={`tnum text-lg font-semibold ${
@@ -427,7 +427,7 @@ export function ProjectionPanel({
           </dd>
         </div>
 
-        <div className="rounded-lg border px-3 py-2">
+        <div className="rounded-xl border px-3 py-2">
           <dt className="text-[11px] text-muted-foreground">Valeur médiane</dt>
           <dd className="tnum text-lg font-semibold">
             {formatEur(result.terminal.p50)}
@@ -437,7 +437,7 @@ export function ProjectionPanel({
           </dd>
         </div>
 
-        <div className="rounded-lg border px-3 py-2">
+        <div className="rounded-xl border px-3 py-2">
           <dt className="text-[11px] text-muted-foreground">
             Risque de perte
           </dt>
@@ -451,7 +451,7 @@ export function ProjectionPanel({
       </dl>
 
       {/* Hypothèses, en clair */}
-      <div className="space-y-2 rounded-lg border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-3 text-xs">
+      <div className="space-y-2 rounded-xl border border-[var(--score-3)]/40 bg-[var(--score-3)]/10 p-3 text-xs">
         <p className="flex items-start gap-2 font-medium">
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-[var(--score-3)]" />
           Ce que cette projection suppose

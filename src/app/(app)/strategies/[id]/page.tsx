@@ -33,6 +33,7 @@ export default async function StrategyPage({
     assetId: row.asset.id,
     tickerYahoo: row.asset.tickerYahoo,
     shortLabel: row.asset.shortLabel,
+    name: row.asset.name,
     type: row.asset.type,
     peaEligible: row.asset.peaEligible,
     ter: row.asset.ter === null ? null : Number(row.asset.ter),

@@ -42,7 +42,7 @@ export function AssetRow({
   );
 
   const label = (
-    <span className="min-w-0 flex-1 truncate text-sm" title={asset.shortLabel}>
+    <span className="min-w-0 flex-1 truncate text-sm font-bold" title={asset.shortLabel}>
       {asset.shortLabel}
     </span>
   );
@@ -82,7 +82,7 @@ export function AssetRow({
           if (Number.isNaN(parsed)) return;
           onWeightChange(Math.min(100, Math.max(0, parsed)));
         }}
-        className="tnum h-7 pl-1.5 pr-5 text-right"
+        className="tnum h-8 pl-1.5 pr-5 text-right"
         aria-label={`Poids de ${asset.shortLabel} en pourcentage`}
       />
       <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -106,7 +106,7 @@ export function AssetRow({
 
   if (stacked) {
     return (
-      <div className="rounded-md border px-2 py-1.5">
+      <div className="rounded-xl border bg-white px-2 py-1.5 dark:bg-input/20">
         <div className="flex items-center gap-2">
           {dot}
           {label}
@@ -122,15 +122,26 @@ export function AssetRow({
     );
   }
 
+  const subtitle = [
+    asset.name,
+    asset.ter === null ? null : `${formatPercent(asset.ter)} de frais par an`,
+    asset.dataPartial ? "données partielles" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <div className="flex h-9 items-center gap-2 rounded-md border px-2">
+    <div className="flex items-center gap-3 rounded-xl border bg-white px-3 py-2.5 dark:bg-input/20">
       {dot}
-      {label}
-      {/* Sous 640 px, les frais et la mention « partiel » cèdent la place au
-          nom : ils sont consultables ailleurs, le nom ne l'est pas. */}
-      <span className="hidden sm:contents">{partial}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold" title={asset.shortLabel}>
+          {asset.shortLabel}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground" title={subtitle}>
+          {subtitle}
+        </span>
+      </span>
       <PeaBadge eligible={asset.peaEligible} />
-      <span className="hidden w-14 shrink-0 text-right sm:block">{ter}</span>
       {weightInput}
       {removeButton}
     </div>

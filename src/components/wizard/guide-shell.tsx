@@ -193,7 +193,13 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
           </ol>
         </header>
 
-        <div className="min-h-[320px]">
+        <div
+          className={cn(
+            "min-h-[320px]",
+            step.id !== "propositions" &&
+              "rounded-2xl border bg-card p-5 lg:p-6",
+          )}
+        >
           {step.id === "projet" && (
             <StepProject profile={profile} patch={patch} />
           )}
@@ -227,7 +233,7 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t pt-4">
+        <div className="flex items-center justify-between gap-3">
           <Button
             variant="ghost"
             disabled={stepIndex === 0}

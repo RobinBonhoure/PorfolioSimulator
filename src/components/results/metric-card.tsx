@@ -35,7 +35,7 @@ export function MetricCard({
       <HoverCardTrigger asChild>
         <div
           className={cn(
-            "cursor-help rounded-lg border bg-card transition-colors hover:bg-secondary/40",
+            "cursor-help rounded-2xl border bg-card transition-colors hover:bg-secondary/40",
             compact ? "px-3 py-2" : "px-3 py-2.5",
           )}
         >
@@ -72,35 +72,3 @@ export function MetricCard({
   );
 }
 
-/** Carte de valeur brute, sans notation : montants et volumes. */
-export function ValueCard({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "positive" | "negative";
-}) {
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2.5">
-      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "tnum text-lg font-semibold leading-tight",
-          tone === "positive" && "text-[var(--pos-text)]",
-          tone === "negative" && "text-[var(--neg-text)]",
-        )}
-      >
-        {value}
-      </p>
-      {hint && (
-        <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
-          {hint}
-        </p>
-      )}
-    </div>
-  );
-}

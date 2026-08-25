@@ -58,10 +58,13 @@ export function CatalogueSheet({
   selectedIds,
   onAdd,
   disabledReason = null,
+  triggerLabel = "Parcourir",
 }: {
   catalog: CatalogAsset[];
   selectedIds: readonly string[];
   onAdd: (asset: EditorAsset) => void;
+  /** Libellé du bouton d'ouverture. */
+  triggerLabel?: string;
   /** Quand il est renseigné, plus rien ne peut être ajouté et la raison est
    *  affichée en tête. La comparaison s'en sert à quatre éléments : laisser les
    *  lignes cliquables pour ne rien faire ensuite passerait pour une panne. */
@@ -132,6 +135,7 @@ export function CatalogueSheet({
       assetId: asset.id,
       tickerYahoo: asset.tickerYahoo,
       shortLabel: asset.shortLabel,
+      name: asset.name,
       type: asset.type,
       peaEligible: asset.peaEligible,
       ter: asset.ter === null ? null : Number(asset.ter),
@@ -146,7 +150,7 @@ export function CatalogueSheet({
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="shrink-0">
           <LibraryBig className="size-4" />
-          Parcourir
+          {triggerLabel}
         </Button>
       </SheetTrigger>
 
@@ -166,7 +170,7 @@ export function CatalogueSheet({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Filtrer par nom ou ticker…"
-              className="h-8 pl-8"
+              className="h-9 pl-8"
             />
           </div>
 

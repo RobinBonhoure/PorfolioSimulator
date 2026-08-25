@@ -1,14 +1,16 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
+import { TrendingUp, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { CorrelationHeatmap } from "@/components/charts/correlation-heatmap";
 import { MainChart, type MainChartMode } from "@/components/charts/main-chart";
 import { RollingReturnsChart } from "@/components/charts/rolling-returns-chart";
+import { BreakdownDonut } from "@/components/charts/breakdown-donut";
+import { ExpertDetails } from "@/components/common/expert-details";
 import { AssetBreakdown } from "@/components/results/asset-breakdown";
 import { FeeBreakdown } from "@/components/results/fee-breakdown";
-import { ValueCard } from "@/components/results/metric-card";
+import { MetricCard } from "@/components/results/metric-card";
 import { ProjectionPanel } from "@/components/results/projection-panel";
 import { TaxationPanel } from "@/components/results/taxation-panel";
 import { Label } from "@/components/ui/label";
@@ -16,15 +18,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  collapseTail,
+  geoBreakdown,
+  sectorBreakdown,
+} from "@/lib/backtest/breakdowns";
+import {
   displayedMetrics,
   isRealMode,
 } from "@/lib/backtest/displayed-metrics";
 import type { StrategyBacktestResponse } from "@/lib/backtest/run-for-strategy";
+import type { CorrelationMatrix } from "@/lib/engine/analytics";
+import { scoreAllMetrics } from "@/lib/engine/scoring";
 import {
   formatDate,
   formatDuration,
   formatEur,
   formatPercent,
+  formatRatio,
   formatSignedPercent,
 } from "@/lib/utils/format";
 
@@ -44,9 +54,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-lg border bg-card p-4">
+    <section className="space-y-3 rounded-2xl border bg-card p-5">
       <div>
-        <h2 className="text-sm font-medium">{title}</h2>
+        <h2 className="font-heading text-base font-bold">{title}</h2>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
@@ -56,18 +66,91 @@ function Section({
   );
 }
 
+/** Carte de chiffre en langage courant : un libellé, une valeur, un repère. */
+function PlainStat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "positive" | "negative";
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-2xl border bg-card p-5">
+      <span className="text-[13px] font-semibold text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={`font-heading tnum text-2xl font-bold ${
+          tone === "positive"
+            ? "text-[var(--pos-text)]"
+            : tone === "negative"
+              ? "text-[var(--neg-text)]"
+              : ""
+        }`}
+      >
+        {value}
+      </span>
+      <span className="text-[13px] text-muted-foreground">{hint}</span>
+    </div>
+  );
+}
+
 /**
- * Colonne centrale : ce que la stratégie a produit.
+ * La corrélation, dite en français avant d'être montrée en matrice.
  *
- * Les ratios notés et les répartitions n'y figurent pas — ils vivent dans la
- * colonne de droite, en vis-à-vis permanent des paramètres de gauche. Le centre
- * garde la chronologie : le bandeau de valeurs, la courbe, puis les analyses
- * détaillées qu'on ne consulte qu'en s'y arrêtant.
+ * La heatmap est un outil de connaisseur ; la phrase porte l'information que la
+ * plupart des lecteurs viennent chercher — mes lignes se diversifient-elles
+ * vraiment ? Pour deux actifs, la matrice entière se réduit d'ailleurs à ce
+ * seul nombre.
+ */
+function correlationSummary(correlation: CorrelationMatrix): string | null {
+  const { labels, matrix } = correlation;
+  if (labels.length < 2) return null;
+
+  let high = { i: 0, j: 1, value: -2 };
+  let low = { i: 0, j: 1, value: 2 };
+  for (let i = 0; i < labels.length; i += 1) {
+    for (let j = i + 1; j < labels.length; j += 1) {
+      const value = matrix[i][j];
+      if (value > high.value) high = { i, j, value };
+      if (value < low.value) low = { i, j, value };
+    }
+  }
+
+  const reading = (value: number) =>
+    value >= 0.8
+      ? "évoluent presque ensemble : ils se diversifient peu entre eux"
+      : value >= 0.5
+        ? "évoluent souvent dans le même sens"
+        : value >= 0
+          ? "évoluent assez indépendamment : la diversification joue"
+          : "évoluent souvent en sens opposés : l'un amortit l'autre";
+
+  const pair = (i: number, j: number, value: number) =>
+    `${labels[i]} et ${labels[j]} ${reading(value)} (corrélation ${formatRatio(value)})`;
+
+  if (labels.length === 2) return `${pair(0, 1, matrix[0][1])}.`;
+
+  return `Le couple le plus lié : ${pair(high.i, high.j, high.value)}. Le plus indépendant : ${pair(low.i, low.j, low.value)}.`;
+}
+
+/**
+ * Colonne centrale, en deux étages.
+ *
+ * L'essentiel d'abord — combien ça vaut, la courbe, trois chiffres en langage
+ * courant, puis la projection, qui parle à tout le monde. Les analyses de
+ * connaisseur (ratios notés, détail par support, corrélations, répartitions)
+ * vivent sous un trait « Détails d'expert » repliable : rien n'est supprimé,
+ * tout est hiérarchisé. Le repli est mémorisé — un habitué des ratios ne doit
+ * pas rouvrir la section à chaque visite.
  */
 export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
   const [mode, setMode] = useState<MainChartMode>("value");
   const [logScale, setLogScale] = useState(false);
-
   const { result, assets, benchmarkLabel, warnings } = data;
 
   // Le jeu de métriques affiché bascule intégralement en euros constants quand
@@ -76,9 +159,15 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
   // illisible, et surtout trompeur.
   const realMode = isRealMode(data.params.realReturns, result.metrics);
   const metrics = displayedMetrics(result.metrics, realMode);
+  const scores = scoreAllMetrics(metrics);
+
+  const gainPositive = metrics.totalGain >= 0;
+  const correlationText = result.analytics.correlation
+    ? correlationSummary(result.analytics.correlation)
+    : null;
 
   return (
-    <div className="space-y-4 p-4 lg:p-5">
+    <div className="mx-auto max-w-[1100px] space-y-4 p-4 lg:px-2 lg:py-1">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <p className="text-sm text-muted-foreground">
           Du {formatDate(metrics.startDate)} au {formatDate(metrics.endDate)} ·{" "}
@@ -105,69 +194,72 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
         </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <ValueCard
-          label={realMode ? "Valeur finale réelle" : "Valeur finale"}
-          value={formatEur(metrics.finalValue)}
-          hint={
-            realMode
-              ? `${formatEur(result.metrics.finalValue)} en euros courants`
-              : undefined
-          }
-        />
-        <ValueCard
-          label="Capital investi"
-          value={formatEur(metrics.totalInvested)}
-          hint={
-            realMode
-              ? `${formatEur(result.metrics.totalInvested)} en euros courants`
-              : `Dont ${formatEur(metrics.initialValue)} au départ`
-          }
-        />
-        <ValueCard
-          label="Gain"
-          value={formatEur(metrics.totalGain)}
-          tone={metrics.totalGain >= 0 ? "positive" : "negative"}
-          hint={formatSignedPercent(metrics.totalReturn)}
-        />
-        <ValueCard
-          label="Frais prélevés"
-          value={formatEur(metrics.fees.total)}
-          tone="negative"
-          hint={`${formatEur(metrics.feeImpact)} de manque à gagner`}
-        />
-      </div>
+      {/* --- L'essentiel ---------------------------------------------------- */}
 
-      <section className="rounded-lg border bg-card p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <Tabs
-            value={mode}
-            onValueChange={(value) => setMode(value as MainChartMode)}
-          >
-            <TabsList>
-              {(Object.keys(MODE_LABELS) as MainChartMode[]).map((key) => (
-                <TabsTrigger key={key} value={key}>
-                  {MODE_LABELS[key]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          {mode === "value" && (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="log-scale" className="text-xs font-normal">
-                Échelle logarithmique
-              </Label>
-              <Switch
-                id="log-scale"
-                checked={logScale}
-                onCheckedChange={setLogScale}
-              />
+      <section className="space-y-4 rounded-2xl border bg-card p-5 lg:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              {realMode
+                ? "Ce que vous auriez aujourd'hui, en euros constants"
+                : "Ce que vous auriez aujourd'hui"}
+            </span>
+            <span className="font-heading tnum text-5xl font-bold leading-none">
+              {formatEur(metrics.finalValue)}
+            </span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${
+                  gainPositive
+                    ? "bg-[var(--pos)]/12 text-[var(--pos-text)]"
+                    : "bg-[var(--neg)]/12 text-[var(--neg-text)]"
+                }`}
+              >
+                <TrendingUp
+                  className={`size-3.5 ${gainPositive ? "" : "rotate-180"}`}
+                />
+                {gainPositive ? "+" : ""}
+                {formatEur(metrics.totalGain)}{" "}
+                {gainPositive ? "de gains" : "de pertes"}
+              </span>
+              <span className="text-[13px] text-muted-foreground">
+                soit {formatSignedPercent(metrics.totalReturn)} des{" "}
+                {formatEur(metrics.totalInvested)} versés
+                {realMode &&
+                  ` · ${formatEur(result.metrics.finalValue)} en euros courants`}
+              </span>
             </div>
-          )}
+          </div>
+
+          <div className="flex flex-col items-end gap-2">
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as MainChartMode)}
+            >
+              <TabsList>
+                {(Object.keys(MODE_LABELS) as MainChartMode[]).map((key) => (
+                  <TabsTrigger key={key} value={key}>
+                    {MODE_LABELS[key]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            {mode === "value" && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="log-scale" className="text-xs font-normal">
+                  Échelle logarithmique
+                </Label>
+                <Switch
+                  id="log-scale"
+                  checked={logScale}
+                  onCheckedChange={setLogScale}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="h-[340px]">
+        <div className="h-[320px]">
           <MainChart
             mode={mode}
             series={result.series}
@@ -178,7 +270,7 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
           />
         </div>
 
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {mode === "value" &&
             (realMode
               ? "Valeur du portefeuille, capital cumulé investi et référence, en euros constants du premier jour."
@@ -190,150 +282,213 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
         </p>
       </section>
 
-      <Section
-        title="Détail par support"
-        description="Ce que chaque ligne a coûté, vaut et rapporté. Les totaux retombent sur ceux du bandeau."
-      >
-        <AssetBreakdown
-          performance={
-            realMode && result.assetPerformanceReal
-              ? result.assetPerformanceReal
-              : result.assetPerformance
+      <div className="grid gap-3 sm:grid-cols-3">
+        <PlainStat
+          label="Ça rapporte"
+          value={`${formatPercent(metrics.cagr)} par an`}
+          hint={`en moyenne, sur ${metrics.effectiveYears.toFixed(0)} ans`}
+          tone={metrics.cagr >= 0 ? "positive" : "negative"}
+        />
+        <PlainStat
+          label="Le pire moment"
+          value={formatPercent(metrics.drawdown.maxDrawdown)}
+          hint={
+            metrics.drawdown.recoveryDate
+              ? `effacé en ${formatDuration(metrics.drawdown.recoveryDays)}`
+              : metrics.drawdown.troughDate
+                ? "pas encore effacé sur la période"
+                : "aucune baisse sur la période"
           }
-          assets={assets}
-          realMode={realMode}
+          tone="negative"
+        />
+        <PlainStat
+          label="Ce que ça coûte"
+          value={formatEur(metrics.fees.total)}
+          hint={`de frais, soit ${formatEur(metrics.feeImpact)} de manque à gagner`}
+        />
+      </div>
+
+      <Section
+        title="Et pour la suite ?"
+        description="Ce que cette allocation pourrait devenir — un éventail de scénarios fondé sur le passé, pas une prévision."
+      >
+        <ProjectionPanel
+          // Métriques nominales, délibérément : la projection gère sa propre
+          // hypothèse d'inflation. Lui passer le jeu déflaté ferait retrancher
+          // l'inflation deux fois.
+          metrics={result.metrics}
+          realCagr={realMode ? result.metrics.real!.cagr : null}
+          monthlyReturns={result.analytics.monthlyPortfolioReturns}
+          defaultInitialAmount={data.params.initialAmount}
+          defaultMonthlyContribution={data.params.monthlyContribution}
         />
       </Section>
 
-      <div className="grid gap-4 2xl:grid-cols-2">
-        <Section
-          title="Baisse maximale"
-          description="La pire séquence traversée, et le temps qu'il a fallu pour l'effacer."
-        >
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Amplitude</dt>
-              <dd className="tnum font-medium text-[var(--neg-text)]">
-                {formatPercent(metrics.drawdown.maxDrawdown)}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Du sommet</dt>
-              <dd className="tnum">{formatDate(metrics.drawdown.peakDate)}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Au creux</dt>
-              <dd className="tnum">{formatDate(metrics.drawdown.troughDate)}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Retour au sommet</dt>
-              <dd className="tnum">
-                {metrics.drawdown.recoveryDate
-                  ? `${formatDate(metrics.drawdown.recoveryDate)} · ${formatDuration(metrics.drawdown.recoveryDays)}`
-                  : "Jamais sur la période"}
-              </dd>
-            </div>
-          </dl>
-        </Section>
+      {/* --- Détails d'expert ----------------------------------------------- */}
 
-        <Section
-          title="Extrêmes"
-          description="Les périodes les plus favorables et les plus défavorables."
-        >
-          <dl className="space-y-2 text-sm">
-            {[
-              { label: "Meilleur mois", period: metrics.bestMonth },
-              { label: "Pire mois", period: metrics.worstMonth },
-              { label: "Meilleure année", period: metrics.bestYear },
-              { label: "Pire année", period: metrics.worstYear },
-            ].map(({ label, period }) => (
-              <div key={label} className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">
-                  {label}
-                  {period ? ` · ${period.period}` : ""}
-                </dt>
-                <dd
-                  className={`tnum font-medium ${
-                    period && period.return >= 0
-                      ? "text-[var(--pos-text)]"
-                      : "text-[var(--neg-text)]"
-                  }`}
-                >
-                  {period ? formatSignedPercent(period.return) : "—"}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Section>
+      <ExpertDetails storageKey="strategy-expert-details">
+        <div className="space-y-4">
+          <section className="space-y-2">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Ratios{realMode && " · euros constants"}
+            </h2>
+            <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+              {scores.map((score) => (
+                <MetricCard key={score.key} score={score} compact />
+              ))}
+            </div>
+          </section>
 
-        <Section
-          title="Frais"
-          description="Ce que la stratégie a coûté, et ce que ce coût a empêché de gagner."
-        >
-          <FeeBreakdown metrics={metrics} />
-        </Section>
-
-        {metrics.taxation && (
           <Section
-            title="Fiscalité à la sortie"
-            description="Valeur nette selon l'enveloppe, en cas de retrait total au terme."
+            title="Détail par support"
+            description="Ce que chaque ligne a coûté, vaut et rapporté. Les totaux retombent sur ceux du haut de page."
           >
-            <TaxationPanel
-              taxation={metrics.taxation}
-              years={metrics.effectiveYears}
+            <AssetBreakdown
+              performance={
+                realMode && result.assetPerformanceReal
+                  ? result.assetPerformanceReal
+                  : result.assetPerformance
+              }
+              assets={assets}
+              realMode={realMode}
             />
           </Section>
-        )}
 
-        <Section
-          title="Projection"
-          description="Ce que cette allocation pourrait devenir — un éventail de scénarios, pas une prévision."
-        >
-          <ProjectionPanel
-            // Métriques nominales, délibérément : la projection gère sa propre
-            // hypothèse d'inflation. Lui passer le jeu déflaté ferait retrancher
-            // l'inflation deux fois.
-            metrics={result.metrics}
-            realCagr={realMode ? result.metrics.real!.cagr : null}
-            monthlyReturns={result.analytics.monthlyPortfolioReturns}
-            defaultInitialAmount={data.params.initialAmount}
-            defaultMonthlyContribution={data.params.monthlyContribution}
-          />
-        </Section>
+          <div className="grid gap-4 2xl:grid-cols-2">
+            <Section
+              title="Baisse maximale"
+              description="La pire séquence traversée, et le temps qu'il a fallu pour l'effacer."
+            >
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Amplitude</dt>
+                  <dd className="tnum font-medium text-[var(--neg-text)]">
+                    {formatPercent(metrics.drawdown.maxDrawdown)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Du sommet</dt>
+                  <dd className="tnum">{formatDate(metrics.drawdown.peakDate)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Au creux</dt>
+                  <dd className="tnum">{formatDate(metrics.drawdown.troughDate)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Retour au sommet</dt>
+                  <dd className="tnum">
+                    {metrics.drawdown.recoveryDate
+                      ? `${formatDate(metrics.drawdown.recoveryDate)} · ${formatDuration(metrics.drawdown.recoveryDays)}`
+                      : "Jamais sur la période"}
+                  </dd>
+                </div>
+              </dl>
+            </Section>
 
-        <Section
-          title="Rendements dans le temps"
-          description="Ce qu'a rapporté chaque année, et ce qu'aurait obtenu une entrée à n'importe quelle date."
-        >
-          <RollingReturnsChart
-            annualReturns={result.analytics.annualReturns}
-            rollingReturns={result.analytics.rollingReturns}
-          />
-        </Section>
+            <Section
+              title="Extrêmes"
+              description="Les périodes les plus favorables et les plus défavorables."
+            >
+              <dl className="space-y-2 text-sm">
+                {[
+                  { label: "Meilleur mois", period: metrics.bestMonth },
+                  { label: "Pire mois", period: metrics.worstMonth },
+                  { label: "Meilleure année", period: metrics.bestYear },
+                  { label: "Pire année", period: metrics.worstYear },
+                ].map(({ label, period }) => (
+                  <div key={label} className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">
+                      {label}
+                      {period ? ` · ${period.period}` : ""}
+                    </dt>
+                    <dd
+                      className={`tnum font-medium ${
+                        period && period.return >= 0
+                          ? "text-[var(--pos-text)]"
+                          : "text-[var(--neg-text)]"
+                      }`}
+                    >
+                      {period ? formatSignedPercent(period.return) : "—"}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Section>
 
-        {result.analytics.correlation && (
-          <Section
-            title="Corrélation entre actifs"
-            description="Sur les rendements mensuels. Plus les couples sont clairs, plus la diversification est réelle."
-          >
-            <CorrelationHeatmap correlation={result.analytics.correlation} />
-          </Section>
-        )}
-      </div>
+            <Section
+              title="Frais"
+              description="Ce que la stratégie a coûté, et ce que ce coût a empêché de gagner."
+            >
+              <FeeBreakdown metrics={metrics} />
+            </Section>
+
+            {metrics.taxation && (
+              <Section
+                title="Fiscalité à la sortie"
+                description="Valeur nette selon l'enveloppe, en cas de retrait total au terme."
+              >
+                <TaxationPanel
+                  taxation={metrics.taxation}
+                  years={metrics.effectiveYears}
+                />
+              </Section>
+            )}
+
+            <Section
+              title="Rendements dans le temps"
+              description="Ce qu'a rapporté chaque année, et ce qu'aurait obtenu une entrée à n'importe quelle date."
+            >
+              <RollingReturnsChart
+                annualReturns={result.analytics.annualReturns}
+                rollingReturns={result.analytics.rollingReturns}
+              />
+            </Section>
+
+            {result.analytics.correlation && (
+              <Section
+                title="Corrélation entre actifs"
+                description="Sur les rendements mensuels. Plus les couples sont clairs, plus la diversification est réelle."
+              >
+                {correlationText && (
+                  <p className="rounded-md bg-muted/60 px-3 py-2 text-sm">
+                    {correlationText}
+                  </p>
+                )}
+                <CorrelationHeatmap
+                  correlation={result.analytics.correlation}
+                />
+              </Section>
+            )}
+          </div>
+
+          <div className="grid gap-4 rounded-2xl border bg-card p-5 sm:grid-cols-2">
+            <BreakdownDonut
+              title="Par zone géographique"
+              slices={collapseTail(geoBreakdown(assets))}
+              emptyLabel="Aucune décomposition géographique disponible pour ces actifs."
+            />
+            <BreakdownDonut
+              title="Par secteur"
+              slices={collapseTail(sectorBreakdown(assets))}
+              emptyLabel="Aucune décomposition sectorielle disponible pour ces actifs."
+            />
+          </div>
+        </div>
+      </ExpertDetails>
     </div>
   );
 }
 
 export function ResultsCenterSkeleton() {
   return (
-    <div className="space-y-4 p-4 lg:p-5">
+    <div className="mx-auto max-w-[1100px] space-y-4 p-4 lg:px-2 lg:py-1">
       <Skeleton className="h-5 w-72" />
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-[74px]" />
+      <Skeleton className="h-[460px]" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} className="h-[92px]" />
         ))}
       </div>
-      <Skeleton className="h-[420px]" />
       <p className="text-center text-sm text-muted-foreground">
         Récupération des cours et calcul en cours. Le premier backtest d&apos;une
         stratégie télécharge l&apos;historique complet de ses actifs ; les

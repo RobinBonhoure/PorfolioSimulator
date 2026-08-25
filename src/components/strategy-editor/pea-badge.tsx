@@ -19,9 +19,9 @@ export function PeaBadge({
 }) {
   const style =
     eligible === true
-      ? "border-[var(--pos)]/40 bg-[var(--pos)]/10 text-[var(--pos-text)]"
+      ? "border-transparent bg-[var(--pos)]/12 text-[var(--pos-text)]"
       : eligible === false
-        ? "border-border bg-muted text-muted-foreground"
+        ? "border-transparent bg-secondary text-muted-foreground"
         : "border-dashed border-border bg-transparent text-muted-foreground";
 
   const label =
@@ -30,7 +30,7 @@ export function PeaBadge({
   return (
     <span
       className={cn(
-        "inline-flex h-5 shrink-0 items-center rounded border px-1.5 text-[11px] font-medium",
+        "inline-flex h-5 shrink-0 items-center rounded-full border px-2 text-[11px] font-bold",
         style,
         className,
       )}

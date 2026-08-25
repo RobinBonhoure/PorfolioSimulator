@@ -46,15 +46,40 @@ export function StrategyList({
   }
 
   return (
-    <>
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {strategies.map((strategy) => (
-          <li key={strategy.id}>
-            <StrategyCard strategy={strategy} />
-          </li>
-        ))}
-      </ul>
-    </>
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {strategies.map((strategy) => (
+        <li key={strategy.id}>
+          <StrategyCard strategy={strategy} />
+        </li>
+      ))}
+
+      {/* La création reste visible depuis la grille elle-même : une carte en
+          pointillés à la suite des stratégies, plutôt qu'un bouton relégué en
+          haut de page que la grille fait oublier. */}
+      <li>
+        <div className="flex h-full min-h-[180px] flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed p-5 text-center">
+          <span className="flex size-10 items-center justify-center rounded-full bg-secondary">
+            <Plus className="size-4.5 text-muted-foreground" />
+          </span>
+          <p className="text-sm font-bold">Une idée à tester ?</p>
+          <p className="max-w-[260px] text-xs text-muted-foreground">
+            Composez librement, ou laissez-vous guider pas à pas si vous
+            débutez.
+          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+            <Button asChild size="sm">
+              <Link href="/strategies/new">Composer</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/strategies/guide">
+                <Sparkles className="size-3.5" />
+                Être guidé
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </li>
+    </ul>
   );
 }
 

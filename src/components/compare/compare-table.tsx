@@ -33,13 +33,33 @@ interface Row {
   metricKey?: MetricKey;
 }
 
-const ROWS: Row[] = [
+/**
+ * L'essentiel : trois lignes en langage courant, celles que le classement de
+ * droite commente. Le reste — montants intermédiaires, ratios, frais — vit
+ * dans le tableau d'expert, replié par défaut.
+ */
+const ESSENTIAL_ROWS: Row[] = [
   {
-    label: "Valeur finale",
+    label: "Ce que vous auriez",
     value: (m) => m.finalValue,
     format: (v) => (v === null ? "—" : formatEur(v)),
     higherIsBetter: true,
   },
+  {
+    label: "Ça rapporte",
+    value: (m) => m.cagr,
+    format: (v) => (v === null ? "—" : `${formatPercent(v)} par an`),
+    higherIsBetter: true,
+  },
+  {
+    label: "Le pire moment",
+    value: (m) => m.drawdown.maxDrawdown,
+    format: (v) => formatPercent(v),
+    higherIsBetter: true,
+  },
+];
+
+const EXPERT_ROWS: Row[] = [
   {
     label: "Capital investi",
     value: (m) => m.totalInvested,
@@ -139,10 +159,15 @@ function bestIndex(values: (number | null)[], higherIsBetter: boolean | null) {
 export function CompareTable({
   strategies,
   colors,
+  variant = "expert",
 }: {
   strategies: ComparedItem[];
   colors: Map<string, string>;
+  /** `essential` : les trois lignes en langage courant. `expert` : le reste. */
+  variant?: "essential" | "expert";
 }) {
+  const rows = variant === "essential" ? ESSENTIAL_ROWS : EXPERT_ROWS;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -172,7 +197,7 @@ export function CompareTable({
         </thead>
 
         <tbody>
-          {ROWS.map((row) => {
+          {rows.map((row) => {
             const values = strategies.map((s) => row.value(s.metrics));
             const best = bestIndex(values, row.higherIsBetter);
             const threshold = row.metricKey
@@ -239,11 +264,14 @@ export function CompareTable({
         </tbody>
       </table>
 
-      <p className="mt-2 text-xs text-muted-foreground">
-        La meilleure valeur de chaque ligne est surlignée et en gras. Les lignes
-        purement descriptives, comme le capital investi, n&apos;ont pas de
-        gagnant : investir davantage n&apos;est ni un avantage ni un défaut.
-      </p>
+      {variant === "expert" && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          La meilleure valeur de chaque ligne est surlignée et en gras. Les
+          lignes purement descriptives, comme le capital investi, n&apos;ont pas
+          de gagnant : investir davantage n&apos;est ni un avantage ni un
+          défaut.
+        </p>
+      )}
     </div>
   );
 }

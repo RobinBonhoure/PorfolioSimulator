@@ -48,7 +48,7 @@ export function PresetPicker({
           <li key={preset.id}>
             <button
               type="button"
-              className="flex h-full w-full flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors hover:bg-secondary/60"
+              className="flex h-full w-full flex-col gap-1.5 rounded-2xl border p-3 text-left transition-colors hover:bg-secondary/60"
               onClick={() =>
                 onApply(
                   preset.holdings.map((holding) => {
@@ -57,6 +57,7 @@ export function PresetPicker({
                       assetId: asset.id,
                       tickerYahoo: asset.tickerYahoo,
                       shortLabel: asset.shortLabel,
+                      name: asset.name,
                       type: asset.type,
                       peaEligible: asset.peaEligible,
                       ter: asset.ter === null ? null : Number(asset.ter),

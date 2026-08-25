@@ -28,10 +28,14 @@ export function AppHeader({ userName }: { userName: string }) {
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-4 border-b px-4">
-      <Link href="/strategies" className="flex items-center gap-2 font-medium">
-        <ChartCandlestick className="size-4" />
-        <span className="text-sm">Simulateur de portefeuille</span>
+    <header className="flex h-14 shrink-0 items-center gap-4 px-4">
+      <Link href="/strategies" className="flex items-center gap-2.5 font-medium">
+        <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <ChartCandlestick className="size-4" />
+        </span>
+        <span className="font-heading text-sm font-bold">
+          Simulateur de portefeuille
+        </span>
       </Link>
 
       <Separator orientation="vertical" className="h-5" />
@@ -50,9 +54,9 @@ export function AppHeader({ userName }: { userName: string }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-md px-2.5 py-1 text-sm transition-colors",
+                "rounded-full px-3.5 py-1.5 text-sm transition-colors",
                 active
-                  ? "bg-secondary text-secondary-foreground"
+                  ? "bg-secondary font-semibold text-secondary-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >

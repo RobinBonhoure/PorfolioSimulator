@@ -10,6 +10,14 @@ import { AssetSearchBar } from "./asset-search-bar";
 import { CatalogueSheet } from "./catalogue-sheet";
 import { PeaVerdictBadge } from "./pea-badge";
 import { peaVerdictFor, weightedTer } from "./types";
+import type { PeaVerdict } from "./types";
+
+/** Le verdict PEA en toutes lettres, pour la ligne de synthèse large. */
+const PEA_VERDICT_TEXT: Record<PeaVerdict, string> = {
+  eligible: "éligible PEA",
+  ineligible: "compte-titres uniquement",
+  unknown: "éligibilité PEA à vérifier",
+};
 import type { StrategyForm } from "./use-strategy-form";
 
 /**
@@ -22,6 +30,7 @@ export function AssetPicker({
   form,
   catalog,
   stacked = false,
+  title,
 }: {
   form: StrategyForm;
   catalog: CatalogAsset[];
@@ -29,27 +38,46 @@ export function AssetPicker({
    *  colonne de 330 px, où les mettre côte à côte laisse au champ de recherche
    *  moins de place qu'il n'en faut pour lire un nom d'ETF. */
   stacked?: boolean;
+  /** Quand il est fourni, le titre partage sa ligne avec la recherche et le
+   *  catalogue — la disposition large de l'écran de composition. */
+  title?: string;
 }) {
   const selectedIds = form.assets.map((a) => a.assetId);
 
+  const controls = (
+    <>
+      <div className={title ? "min-w-0 max-w-sm flex-1" : "min-w-0 flex-1"}>
+        <AssetSearchBar
+          selectedIds={selectedIds}
+          onAdd={form.addAsset}
+          onAddFromYahoo={form.addFromYahoo}
+        />
+      </div>
+      <div className={stacked ? "[&>button]:w-full" : undefined}>
+        <CatalogueSheet
+          catalog={catalog}
+          selectedIds={selectedIds}
+          onAdd={form.addAsset}
+          triggerLabel={title ? "Parcourir le catalogue" : "Parcourir"}
+        />
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-2">
-      <div className={stacked ? "space-y-1.5" : "flex items-center gap-2"}>
-        <div className="min-w-0 flex-1">
-          <AssetSearchBar
-            selectedIds={selectedIds}
-            onAdd={form.addAsset}
-            onAddFromYahoo={form.addFromYahoo}
-          />
+      {title ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading text-base font-bold">{title}</h2>
+          <div className="flex flex-1 items-center justify-end gap-2">
+            {controls}
+          </div>
         </div>
-        <div className={stacked ? "[&>button]:w-full" : undefined}>
-          <CatalogueSheet
-            catalog={catalog}
-            selectedIds={selectedIds}
-            onAdd={form.addAsset}
-          />
+      ) : (
+        <div className={stacked ? "space-y-1.5" : "flex items-center gap-2"}>
+          {controls}
         </div>
-      </div>
+      )}
 
       {form.assets.length === 0 ? (
         <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed p-5 text-center">
@@ -79,44 +107,43 @@ export function AssetPicker({
           {/* `flex-wrap` n'est pas décoratif : « Non éligible PEA » et le total
               additionnés dépassent la largeur d'une colonne latérale, et sans
               retour à la ligne le verdict sortirait du cadre. */}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pt-0.5">
-            <dl className="flex items-center gap-3 text-[11px]">
-              <div className="flex items-center gap-1">
-                <dt className="text-muted-foreground">Total</dt>
-                <dd
-                  className={`tnum font-medium ${
-                    form.weightsValid ? "" : "text-[var(--neg-text)]"
-                  }`}
-                >
-                  {form.total.toLocaleString("fr-FR", {
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  %
-                </dd>
-              </div>
-              <div className="flex items-center gap-1">
-                <dt className="text-muted-foreground">TER</dt>
-                <dd className="tnum font-medium">
-                  {formatPercent(weightedTer(form.assets))}
-                </dd>
-              </div>
-            </dl>
-
-            <div className="flex items-center gap-1.5">
-              <PeaVerdictBadge verdict={peaVerdictFor(form.assets)} />
-              {form.assets.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1.5 text-[11px]"
-                  onClick={form.equalize}
-                >
-                  <Scale className="size-3" />
-                  Égaliser
-                </Button>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`tnum rounded-full px-2.5 py-1 text-xs font-bold ${
+                  form.weightsValid
+                    ? "bg-[var(--pos)]/12 text-[var(--pos-text)]"
+                    : "bg-[var(--neg)]/12 text-[var(--neg-text)]"
+                }`}
+              >
+                Total{" "}
+                {form.total.toLocaleString("fr-FR", {
+                  maximumFractionDigits: 2,
+                })}{" "}
+                %
+              </span>
+              {stacked ? (
+                <PeaVerdictBadge verdict={peaVerdictFor(form.assets)} />
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {formatPercent(weightedTer(form.assets))} de frais par an ·{" "}
+                  {PEA_VERDICT_TEXT[peaVerdictFor(form.assets)]}
+                </span>
               )}
             </div>
+
+            {form.assets.length > 1 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-[11px]"
+                onClick={form.equalize}
+              >
+                <Scale className="size-3" />
+                Égaliser{stacked ? "" : " les poids"}
+              </Button>
+            )}
           </div>
         </>
       )}

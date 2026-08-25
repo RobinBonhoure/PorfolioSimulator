@@ -34,7 +34,7 @@ function ChoiceCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "w-full rounded-lg border p-3 text-left transition-colors",
+        "w-full rounded-2xl border p-3 text-left transition-colors",
         selected
           ? "border-primary bg-primary/5"
           : "hover:border-foreground/20 hover:bg-secondary/40",
@@ -97,7 +97,7 @@ export function StepProject({
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <Label htmlFor="horizon" className="text-sm font-medium">
+          <Label htmlFor="horizon" className="font-heading text-base font-bold">
             Dans combien de temps aurez-vous besoin de cet argent ?
           </Label>
           <span className="tnum text-sm font-semibold">
@@ -235,7 +235,7 @@ export function StepSupports({
       </p>
 
       <div className="space-y-2">
-        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        <div className="flex items-start justify-between gap-4 rounded-2xl border p-3">
           <Label htmlFor="gold" className="flex-1 cursor-pointer font-normal">
             <span className="block text-sm font-medium">Or — 10 %</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
@@ -250,7 +250,7 @@ export function StepSupports({
           />
         </div>
 
-        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        <div className="flex items-start justify-between gap-4 rounded-2xl border p-3">
           <Label htmlFor="crypto" className="flex-1 cursor-pointer font-normal">
             <span className="block text-sm font-medium">Bitcoin — 5 % maximum</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">

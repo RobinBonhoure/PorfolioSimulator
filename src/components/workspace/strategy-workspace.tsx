@@ -21,10 +21,6 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  displayedMetrics,
-  isRealMode,
-} from "@/lib/backtest/displayed-metrics";
 import { useBacktest } from "@/hooks/use-backtest";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { CatalogAsset } from "@/lib/db/queries/assets";
@@ -34,7 +30,6 @@ import {
   type StrategyFormValues,
 } from "@/lib/validation/strategy.schema";
 import { toEngineParams, toSelection } from "@/lib/validation/to-engine-params";
-import { ResultsAside, ResultsAsideSkeleton } from "./results-aside";
 import { ResultsCenter, ResultsCenterSkeleton } from "./results-center";
 
 /** Délai avant recalcul, en millisecondes. Assez long pour absorber la saisie
@@ -227,7 +222,7 @@ export function StrategyWorkspace({
   );
 
   return (
-    <div className="h-full overflow-y-auto lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_300px] 2xl:grid-cols-[380px_minmax(0,1fr)_330px]">
+    <div className="h-full overflow-y-auto lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-4 lg:overflow-hidden lg:p-4 2xl:grid-cols-[380px_minmax(0,1fr)]">
       {data && (
         <YoungAssetDialog
           open={needsResolution}
@@ -239,25 +234,15 @@ export function StrategyWorkspace({
       )}
 
       {/* Colonne de paramètres — en tiroir sous lg. */}
-      <aside className="hidden lg:flex lg:min-h-0 lg:flex-col lg:border-r">
+      <aside className="hidden lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:bg-card">
         <ScrollArea className="min-h-0 flex-1">
           <div className="p-4">{params}</div>
         </ScrollArea>
         {saveBar}
       </aside>
 
-      {/* Centre et synthèse. En dessous de 1280 px ils partagent un seul
-          défilement, la synthèse venant à la suite du centre ; au-delà,
-          `contents` les fait remonter en colonnes de la grille. C'est ce qui
-          évite d'avoir à rendre la colonne de droite deux fois. */}
-      <div className="flex flex-col lg:min-h-0 lg:overflow-y-auto xl:contents">
-        {/* `min-h-0` seulement à partir de 1280 px : en dessous, la section est
-            empilée au-dessus de la synthèse et doit garder sa hauteur de
-            contenu. Autorisée à rétrécir sans rien couper, elle laissait son
-            contenu se superposer au bloc suivant — graphique et ratios
-            imprimés l'un sur l'autre entre 1024 et 1280 px. */}
-        <section className="flex flex-col xl:min-h-0 xl:overflow-hidden">
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-3 py-2 lg:px-5 xl:static">
+      <section className="flex flex-col lg:min-h-0 lg:overflow-hidden">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-3 py-2 lg:static lg:border-0 lg:bg-transparent lg:px-2 lg:pt-0">
             <div className="flex min-w-0 items-center gap-2">
               <Drawer>
                 <DrawerTrigger asChild>
@@ -316,7 +301,7 @@ export function StrategyWorkspace({
           </div>
 
           {blockedReason && (
-            <div className="flex items-start gap-2 border-b border-[var(--score-3)]/40 bg-[var(--score-3)]/10 px-3 py-2 text-xs lg:px-5">
+            <div className="flex items-start gap-2 border-b border-[var(--score-3)]/40 bg-[var(--score-3)]/10 px-3 py-2 text-xs lg:rounded-lg lg:border lg:px-4">
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-[var(--score-3)]" />
               <p>
                 <span className="font-medium">
@@ -328,7 +313,7 @@ export function StrategyWorkspace({
             </div>
           )}
 
-          <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+          <div className="relative lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             {error ? (
               <div className="mx-auto mt-8 flex max-w-lg flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
                 <TriangleAlert className="size-5 text-[var(--neg-text)]" />
@@ -346,25 +331,7 @@ export function StrategyWorkspace({
               </div>
             )}
           </div>
-        </section>
-
-        <aside className="border-t xl:min-h-0 xl:overflow-y-auto xl:border-l xl:border-t-0">
-          {isPending || !data || error ? (
-            <ResultsAsideSkeleton />
-          ) : (
-            <div className={isFetching ? "opacity-60 transition-opacity" : undefined}>
-              <ResultsAside
-              metrics={displayedMetrics(
-                data.result.metrics,
-                isRealMode(data.params.realReturns, data.result.metrics),
-              )}
-              assets={data.assets}
-              realMode={isRealMode(data.params.realReturns, data.result.metrics)}
-            />
-            </div>
-          )}
-        </aside>
-      </div>
+      </section>
     </div>
   );
 }

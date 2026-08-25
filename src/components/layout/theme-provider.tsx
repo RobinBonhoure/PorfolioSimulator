@@ -10,9 +10,10 @@ export function ThemeProvider({
   return (
     <NextThemesProvider
       attribute="class"
-      // Sombre par défaut : c'est un outil d'analyse consulté longuement, et la
-      // palette de graphiques a été calibrée sur la surface sombre en premier.
-      defaultTheme="dark"
+      // Clair par défaut : la direction « Chaleureux » vise le grand public, et
+      // sa surface crème est la référence sur laquelle la palette est calibrée.
+      // Le sombre reste disponible par la bascule.
+      defaultTheme="light"
       enableSystem
       disableTransitionOnChange
       {...props}

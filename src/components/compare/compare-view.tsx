@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { rememberComparison } from "@/actions/comparisons";
 
 import { BreakdownDonut } from "@/components/charts/breakdown-donut";
+import { ExpertDetails } from "@/components/common/expert-details";
 import { SidebarParams } from "@/components/strategy-editor/sidebar-params";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +32,7 @@ import type { StrategyListItem } from "@/lib/db/queries/strategies";
 import type { StrategyParams } from "@/lib/engine/types";
 import { colorForIndex } from "@/lib/utils/asset-palette";
 import { formatDate } from "@/lib/utils/format";
-import {
-  displayedMetrics,
-  isRealMode,
-} from "@/lib/backtest/displayed-metrics";
+import { displayedMetrics, isRealMode } from "@/lib/backtest/displayed-metrics";
 import { CompareDrawdownChart, CompareValueChart } from "./compare-charts";
 import { CompareRanking } from "./compare-ranking";
 import {
@@ -64,9 +62,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-lg border bg-card p-4">
+    <section className="space-y-3 rounded-2xl border bg-card p-5">
       <div>
-        <h2 className="text-sm font-medium">{title}</h2>
+        <h2 className="font-heading text-base font-bold">{title}</h2>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
@@ -237,13 +235,6 @@ export function CompareView({
           la liste laisserait croire qu'il ne concerne que le dernier élément
           coché. */}
       <section className="space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Plan commun
-        </h2>
-        <p className="text-[11px] text-muted-foreground">
-          Appliqué à chaque élément comparé, y compris aux stratégies : leurs
-          propres montants et durées sont ignorés le temps de la comparaison.
-        </p>
         <SidebarParams
           values={form}
           onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
@@ -298,8 +289,8 @@ export function CompareView({
   // Mêmes largeurs de colonnes que l'espace de travail d'une stratégie : passer
   // de l'un à l'autre ne doit pas déplacer la colonne de gauche sous le curseur.
   return (
-    <div className="h-full overflow-y-auto lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_300px] 2xl:grid-cols-[380px_minmax(0,1fr)_330px]">
-      <aside className="hidden lg:flex lg:min-h-0 lg:flex-col lg:border-r">
+    <div className="h-full overflow-y-auto lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-4 lg:overflow-hidden lg:p-4 xl:grid-cols-[360px_minmax(0,1fr)_300px] 2xl:grid-cols-[380px_minmax(0,1fr)_330px]">
+      <aside className="hidden lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:bg-card">
         <div className="border-b px-4 py-3">
           <h1 className="text-sm font-semibold tracking-tight">Comparer</h1>
           <p className="text-xs text-muted-foreground">
@@ -340,7 +331,9 @@ export function CompareView({
                 <DrawerHeader>
                   <DrawerTitle>Plan et sélection</DrawerTitle>
                 </DrawerHeader>
-                <div className="relative max-h-[65dvh] overflow-y-auto">{sidebar}</div>
+                <div className="relative max-h-[65dvh] overflow-y-auto">
+                  {sidebar}
+                </div>
                 {applyBar}
               </DrawerContent>
             </Drawer>
@@ -354,7 +347,7 @@ export function CompareView({
               partagent le défilement du conteneur : deux ascenseurs imbriqués
               couperaient le graphique en deux. */}
           <div className="relative xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            <div className="mx-auto max-w-6xl p-4 lg:p-6">
+            <div className="mx-auto max-w-6xl p-4 lg:px-2 lg:py-1">
               <Results
                 ready={applied !== null}
                 data={shown}
@@ -373,9 +366,11 @@ export function CompareView({
             un portable serait retirer l'essentiel à ceux qui ont le moins de
             place. */}
         {shown && (
-          <aside className="relative border-t xl:min-h-0 xl:overflow-y-auto xl:border-l xl:border-t-0">
+          <aside className="relative border-t xl:min-h-0 xl:overflow-y-auto xl:rounded-2xl xl:border xl:bg-card">
             <div
-              className={isFetching ? "opacity-60 transition-opacity" : undefined}
+              className={
+                isFetching ? "opacity-60 transition-opacity" : undefined
+              }
             >
               <CompareRanking
                 items={shown.items}
@@ -505,51 +500,66 @@ function Results({
       </Section>
 
       <Section
-        title="Tableau comparatif"
-        description="Survolez le nom d'une métrique pour sa définition."
+        title="L'essentiel, côte à côte"
+        description="La meilleure valeur de chaque ligne est surlignée."
       >
-        <CompareTable strategies={data.items} colors={colors} />
-      </Section>
-
-      <Section
-        title="Baisses subies"
-        description="Écart au dernier sommet, superposé pour tous les éléments."
-      >
-        <CompareDrawdownChart
-          drawdowns={data.drawdowns}
-          strategies={seriesInfo}
+        <CompareTable
+          strategies={data.items}
+          colors={colors}
+          variant="essential"
         />
       </Section>
 
-      <Section
-        title="Répartitions"
-        description="Décompositions des supports, pondérées par leurs poids cibles."
-      >
-        <div className="grid gap-6 lg:grid-cols-2">
-          {data.items.map((item) => (
-            <div key={item.id} className="space-y-4 rounded-md border p-3">
-              <p className="flex items-center gap-2 text-sm font-medium">
-                <span
-                  aria-hidden
-                  className="size-2 rounded-sm"
-                  style={{ backgroundColor: colors.get(item.id) }}
-                />
-                {item.name}
-              </p>
-              <BreakdownDonut
-                title="Secteurs"
-                slices={item.sectors}
-                emptyLabel="Aucune décomposition sectorielle disponible."
-              />
-              <BreakdownDonut
-                title="Zones géographiques"
-                slices={item.geography}
-                emptyLabel="Aucune décomposition géographique disponible."
-              />
+      <ExpertDetails storageKey="compare-expert-details">
+        <div className="space-y-4">
+          <Section
+            title="Tableau comparatif complet"
+            description="Survolez le nom d'une métrique pour sa définition."
+          >
+            <CompareTable strategies={data.items} colors={colors} />
+          </Section>
+
+          <Section
+            title="Baisses subies"
+            description="Écart au dernier sommet, superposé pour tous les éléments."
+          >
+            <CompareDrawdownChart
+              drawdowns={data.drawdowns}
+              strategies={seriesInfo}
+            />
+          </Section>
+
+          <Section
+            title="Répartitions"
+            description="Décompositions des supports, pondérées par leurs poids cibles."
+          >
+            <div className="grid gap-6 lg:grid-cols-2">
+              {data.items.map((item) => (
+                <div key={item.id} className="space-y-4 rounded-xl border p-4">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <span
+                      aria-hidden
+                      className="size-2 rounded-sm"
+                      style={{ backgroundColor: colors.get(item.id) }}
+                    />
+                    {item.name}
+                  </p>
+                  <BreakdownDonut
+                    title="Secteurs"
+                    slices={item.sectors}
+                    emptyLabel="Aucune décomposition sectorielle disponible."
+                  />
+                  <BreakdownDonut
+                    title="Zones géographiques"
+                    slices={item.geography}
+                    emptyLabel="Aucune décomposition géographique disponible."
+                  />
+                </div>
+              ))}
             </div>
-          ))}
+          </Section>
         </div>
-      </Section>
+      </ExpertDetails>
     </div>
   );
 }

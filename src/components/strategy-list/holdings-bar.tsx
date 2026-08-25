@@ -41,7 +41,7 @@ export function HoldingsBar({
 
   return (
     <span className="block space-y-1.5">
-      <span className="flex h-1.5 overflow-hidden rounded-full">
+      <span className="flex h-2 overflow-hidden rounded-full">
         {holdings.map((holding) => (
           <span
             key={holding.assetId}

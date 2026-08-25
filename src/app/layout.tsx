@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist_Mono, Nunito_Sans } from "next/font/google";
 
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -7,8 +7,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
+// Direction « Chaleureux » : Nunito Sans pour le texte courant, Bricolage
+// Grotesque pour les titres et les grands chiffres. Les deux sont variables,
+// donc un seul fichier par famille quel que soit le nombre de graisses.
+const nunitoSans = Nunito_Sans({
   variable: "--font-sans",
+  subsets: ["latin"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
 });
 
@@ -31,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="fr"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${nunitoSans.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider>

@@ -79,7 +79,7 @@ export function StepProposals({
               onClick={() => onSelect(strategy.id)}
               aria-pressed={selected}
               className={cn(
-                "flex flex-col gap-3 rounded-lg border p-4 text-left transition-colors",
+                "flex flex-col gap-3 rounded-2xl border p-4 text-left transition-colors",
                 selected
                   ? "border-primary bg-primary/5"
                   : "hover:border-foreground/20 hover:bg-secondary/40",

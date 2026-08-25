@@ -70,6 +70,7 @@ export function useStrategyForm(
       assetId: result.data.assetId,
       tickerYahoo: symbol,
       shortLabel: name.length > 40 ? `${name.slice(0, 38)}…` : name,
+      name,
       type: "stock",
       peaEligible: null,
       ter: null,

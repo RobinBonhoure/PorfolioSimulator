@@ -135,6 +135,7 @@ export function ComparePicker({
       assetId: result.data.assetId,
       tickerYahoo: symbol,
       shortLabel: name.length > 40 ? `${name.slice(0, 38)}…` : name,
+      name,
       type: "stock",
       peaEligible: null,
       ter: null,
@@ -220,10 +221,10 @@ export function ComparePicker({
               return (
                 <li
                   key={id}
-                  className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-3 py-2"
+                  className="flex items-center gap-2 rounded-lg border border-primary bg-white px-3 py-2 dark:bg-input/20"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
+                    <span className="block truncate text-sm font-bold">
                       {asset?.label ?? "Support retiré du catalogue"}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
@@ -293,8 +294,8 @@ function StrategyRow({
       className={cn(
         "block w-full rounded-lg border px-3 py-2 text-left transition-colors",
         selected
-          ? "border-primary bg-primary/5"
-          : "hover:border-foreground/20 hover:bg-secondary/40",
+          ? "border-primary bg-white dark:bg-input/20"
+          : "bg-white hover:border-foreground/20 dark:bg-input/10",
         disabled && "cursor-not-allowed opacity-40 hover:bg-transparent",
       )}
     >
@@ -309,7 +310,7 @@ function StrategyRow({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="block truncate text-sm font-bold">{title}</span>
           <span className="block truncate text-xs text-muted-foreground">
             {subtitle}
           </span>
