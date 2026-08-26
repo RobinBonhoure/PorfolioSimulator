@@ -101,7 +101,7 @@ export function AssetBreakdown({
                         className="size-2.5 shrink-0 rounded-sm"
                         style={{ backgroundColor: palette.get(row.assetId) }}
                       />
-                      <span className="truncate">
+                      <span className="truncate font-bold">
                         {asset?.label ?? row.assetId}
                       </span>
                       {asset && <PeaBadge eligible={asset.peaEligible} />}
@@ -126,7 +126,7 @@ export function AssetBreakdown({
 
                   <TableCell
                     className={cn(
-                      "tnum text-right",
+                      "tnum text-right font-bold",
                       row.assetReturn >= 0
                         ? "text-[var(--pos-text)]"
                         : "text-[var(--neg-text)]",
@@ -137,7 +137,7 @@ export function AssetBreakdown({
 
                   <TableCell
                     className={cn(
-                      "tnum text-right",
+                      "tnum text-right font-bold",
                       row.assetAnnualReturn >= 0
                         ? "text-[var(--pos-text)]"
                         : "text-[var(--neg-text)]",
@@ -154,7 +154,7 @@ export function AssetBreakdown({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "tnum text-right font-medium",
+                      "tnum text-right font-bold",
                       row.gain >= 0
                         ? "text-[var(--pos-text)]"
                         : "text-[var(--neg-text)]",
@@ -174,19 +174,19 @@ export function AssetBreakdown({
 
           <TableFooter>
             <TableRow>
-              <TableCell className="font-medium">Total</TableCell>
+              <TableCell className="font-bold">Total</TableCell>
               <TableCell className="tnum text-right">100 %</TableCell>
               <TableCell className="text-right text-muted-foreground">—</TableCell>
               <TableCell className="text-right text-muted-foreground">—</TableCell>
-              <TableCell className="tnum text-right font-medium">
+              <TableCell className="tnum text-right font-bold">
                 {formatEur(totals.contributed)}
               </TableCell>
-              <TableCell className="tnum text-right font-medium">
+              <TableCell className="tnum text-right font-bold">
                 {formatEur(totals.finalValue)}
               </TableCell>
               <TableCell
                 className={cn(
-                  "tnum text-right font-medium",
+                  "tnum text-right font-bold",
                   totals.gain >= 0
                     ? "text-[var(--pos-text)]"
                     : "text-[var(--neg-text)]",

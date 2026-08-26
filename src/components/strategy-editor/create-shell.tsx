@@ -119,7 +119,7 @@ export function CreateShell({ catalog }: { catalog: CatalogAsset[] }) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 lg:py-8">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight">
             Composer une stratégie
           </h1>
           <p className="text-sm text-muted-foreground">

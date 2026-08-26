@@ -39,10 +39,10 @@ export function MetricCard({
             compact ? "px-3 py-2" : "px-3 py-2.5",
           )}
         >
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-[11px] font-bold text-muted-foreground">
             {score.threshold.label}
           </p>
-          <p className="tnum text-lg font-semibold leading-tight">
+          <p className="font-heading tnum text-lg font-bold leading-tight">
             {formatMetricValue(score)}
           </p>
           <div className="mt-1.5 flex items-center gap-2">

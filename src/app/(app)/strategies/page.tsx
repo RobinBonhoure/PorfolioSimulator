@@ -16,7 +16,7 @@ export default async function StrategiesPage() {
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight">
               Mes stratégies
             </h1>
             <p className="text-sm text-muted-foreground">

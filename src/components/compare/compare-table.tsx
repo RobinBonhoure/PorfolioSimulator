@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 import {
   HoverCard,
   HoverCardContent,
@@ -18,8 +20,9 @@ import { cn } from "@/lib/utils";
  * permet de comparer une ligne d'un coup d'œil, alors que l'inverse obligerait
  * à sauter d'une colonne à l'autre.
  *
- * La meilleure valeur de chaque ligne est mise en évidence, mais jamais par la
- * couleur seule — un fond léger **et** une graisse plus marquée, pour que la
+ * Toutes les valeurs sont en gras, comme les autres nombres saisis ou lus
+ * dans l'application. La meilleure de chaque ligne est mise en évidence, mais
+ * jamais par la couleur seule — un fond léger **et** une coche, pour que la
  * distinction survive à une impression en noir et blanc comme à un daltonisme.
  */
 
@@ -179,7 +182,7 @@ export function CompareTable({
             {strategies.map((strategy) => (
               <th
                 key={strategy.id}
-                className="min-w-[140px] px-3 py-2 text-right font-medium"
+                className="min-w-[140px] px-3 py-2 text-right font-bold"
               >
                 <span className="flex items-center justify-end gap-1.5">
                   <span
@@ -243,10 +246,18 @@ export function CompareTable({
                       key={strategies[index].id}
                       className={cn(
                         "px-3 py-1.5 text-right align-middle",
-                        isBest && "bg-[var(--pos)]/8 font-semibold",
+                        isBest && "bg-[var(--pos)]/8",
                       )}
                     >
-                      <span className="tnum block">{row.format(value)}</span>
+                      <span className="tnum flex items-center justify-end gap-1 font-bold">
+                        {isBest && (
+                          <Check
+                            aria-hidden
+                            className="size-3 shrink-0 text-[var(--pos-text)]"
+                          />
+                        )}
+                        {row.format(value)}
+                      </span>
                       {score && (
                         <span className="mt-1 flex justify-end">
                           <MetricGauge
@@ -266,7 +277,7 @@ export function CompareTable({
 
       {variant === "expert" && (
         <p className="mt-2 text-xs text-muted-foreground">
-          La meilleure valeur de chaque ligne est surlignée et en gras. Les
+          La meilleure valeur de chaque ligne est surlignée et cochée. Les
           lignes purement descriptives, comme le capital investi, n&apos;ont pas
           de gagnant : investir davantage n&apos;est ni un avantage ni un
           défaut.

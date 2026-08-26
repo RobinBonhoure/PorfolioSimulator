@@ -72,7 +72,7 @@ export function HoldingsBar({
               <span className="min-w-0 flex-1 truncate text-muted-foreground">
                 {holding.shortLabel}
               </span>
-              <span className="tnum shrink-0">
+              <span className="tnum shrink-0 font-bold">
                 {formatPercent(holding.weight, 0)}
               </span>
             </span>
@@ -84,7 +84,7 @@ export function HoldingsBar({
               <span className="min-w-0 flex-1 truncate">
                 et {rest.length} autre{rest.length > 1 ? "s" : ""}
               </span>
-              <span className="tnum shrink-0">
+              <span className="tnum shrink-0 font-bold">
                 {formatPercent(restWeight, 0)}
               </span>
             </span>

@@ -149,9 +149,9 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
         )}
       >
         <header className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-muted-foreground" />
-            <h1 className="text-xl font-semibold tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="size-6 text-muted-foreground" />
+            <h1 className="text-3xl font-bold tracking-tight">
               Construire un portefeuille
             </h1>
           </div>
@@ -244,12 +244,13 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
           </Button>
 
           {step.id === "affiner" ? (
-            <Button disabled={creating || !chosen} onClick={create}>
+            <Button size="lg" disabled={creating || !chosen} onClick={create}>
               {creating && <Loader2 className="size-4 animate-spin" />}
               Créer la stratégie
             </Button>
           ) : (
             <Button
+              size="lg"
               disabled={!canAdvance}
               onClick={() => setStepIndex((index) => index + 1)}
             >

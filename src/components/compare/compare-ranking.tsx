@@ -121,7 +121,7 @@ export function CompareRanking({
                   style={{ backgroundColor: colors.get(item.id) }}
                 />
                 <span
-                  className="min-w-0 flex-1 truncate text-xs font-medium"
+                  className="min-w-0 flex-1 truncate text-xs font-bold"
                   title={item.name}
                 >
                   {item.name}
@@ -140,7 +140,7 @@ export function CompareRanking({
                     }}
                   />
                 </span>
-                <span className="tnum shrink-0 text-xs font-medium">
+                <span className="tnum shrink-0 text-xs font-bold">
                   {formatEur(item.metrics.finalValue)}
                 </span>
               </div>
@@ -161,7 +161,7 @@ export function CompareRanking({
 
         {sweeps ? (
           <p className="text-[11px] leading-snug text-muted-foreground">
-            <span className="font-medium text-foreground">{leader.name}</span>{" "}
+            <span className="font-bold text-foreground">{leader.name}</span>{" "}
             l&apos;emporte aussi sur la régularité, la baisse maximale et le
             rapport rendement/risque. C&apos;est rare : le mieux placé a
             d&apos;ordinaire payé son rang en secousses.
@@ -183,12 +183,12 @@ export function CompareRanking({
                       }}
                     />
                     <span
-                      className="min-w-0 flex-1 truncate font-medium"
+                      className="min-w-0 flex-1 truncate font-bold"
                       title={criterion.leader.item.name}
                     >
                       {criterion.leader.item.name}
                     </span>
-                    <span className="tnum shrink-0">
+                    <span className="tnum shrink-0 font-bold">
                       {criterion.format(criterion.leader.value)}
                     </span>
                   </span>

@@ -103,20 +103,20 @@ export function NewStrategyButton({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {canCompare && (
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="lg" variant="outline">
           <Link href="/compare">
             <Columns3 className="size-4" />
             Comparer
           </Link>
         </Button>
       )}
-      <Button asChild size="sm" variant="outline">
+      <Button asChild size="lg" variant="outline">
         <Link href="/strategies/new">
           <Plus className="size-4" />
           Composer moi-même
         </Link>
       </Button>
-      <Button asChild size="sm">
+      <Button asChild size="lg">
         <Link href="/strategies/guide">
           <Sparkles className="size-4" />
           Être guidé

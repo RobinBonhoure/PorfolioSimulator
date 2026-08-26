@@ -190,6 +190,7 @@ export function StrategyWorkspace({
   const saveBar = (
     <div className="border-t p-3">
       <Button
+        size="lg"
         className="w-full"
         variant={isDirty ? "default" : "outline"}
         disabled={!isDirty || !form.complete || saving}

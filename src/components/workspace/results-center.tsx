@@ -80,7 +80,7 @@ function PlainStat({
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-2xl border bg-card p-5">
-      <span className="text-[13px] font-semibold text-muted-foreground">
+      <span className="text-[13px] font-bold text-muted-foreground">
         {label}
       </span>
       <span

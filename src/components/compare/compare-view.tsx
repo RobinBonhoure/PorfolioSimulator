@@ -259,6 +259,7 @@ export function CompareView({
   const applyBar = (
     <div className="border-t p-3">
       <Button
+        size="lg"
         className="w-full"
         variant={isDirty && complete ? "default" : "outline"}
         disabled={!isDirty || !complete || saving}
@@ -501,7 +502,7 @@ function Results({
 
       <Section
         title="L'essentiel, côte à côte"
-        description="La meilleure valeur de chaque ligne est surlignée."
+        description="La meilleure valeur de chaque ligne est surlignée et cochée."
       >
         <CompareTable
           strategies={data.items}
