@@ -3,18 +3,26 @@ import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { dataFetchLog, fxSeries, priceSeries } from "@/lib/db/schema";
 import type { FxPoint, IsoDate, PricePoint } from "@/lib/engine/types";
+import { fetchFxSeries } from "./ecb/fx";
 import { YahooDataError } from "./yahoo/client";
-import { fetchFxSeries } from "./yahoo/fx";
 import { fetchDailyPrices } from "./yahoo/prices";
 
 /**
  * Cache des données de marché.
  *
  * Politique : première demande d'un actif → historique complet récupéré et
- * stocké ; demandes suivantes → lecture en base, et appel à Yahoo uniquement
- * pour le delta si la dernière récupération date de plus de vingt-quatre
- * heures. Un backtest ne doit pas dépendre du réseau une fois les données
- * présentes.
+ * stocké ; demandes suivantes → lecture en base, et appel au fournisseur
+ * uniquement pour le delta si la dernière récupération date de plus de
+ * vingt-quatre heures. Un backtest ne doit pas dépendre du réseau une fois les
+ * données présentes.
+ *
+ * Deux fournisseurs, et le partage n'est pas arbitraire : **Yahoo pour les
+ * cours, la BCE pour le change**. Yahoo est la seule source gratuite couvrant
+ * les ETF européens, mais ses séries de change sont à la fois courtes (elles
+ * commencent fin 2003) et localement fausses — la comparaison avec les taux de
+ * référence officiels fait apparaître quatre journées de 2008 où l'euro/dollar
+ * de Yahoo s'écarte de plus de 5 %, dont une de 16 %. Ces dates tombent en
+ * pleine crise, là où un backtest a le plus besoin d'être juste.
  *
  * Le cache stocke la donnée **brute**. Combler les trous de cotation et aligner
  * les calendriers relève du moteur, qui doit rester seul maître de ces choix —

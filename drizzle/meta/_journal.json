@@ -50,6 +50,20 @@
       "when": 1787576300243,
       "tag": "0006_add_comparison_params",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787763801816,
+      "tag": "0007_add_cap_breakdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788513257496,
+      "tag": "0008_add_price_history_from",
+      "breakpoints": true
     }
   ]
 }

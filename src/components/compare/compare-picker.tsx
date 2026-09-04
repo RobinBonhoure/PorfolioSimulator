@@ -161,7 +161,7 @@ export function ComparePicker({
                   title={strategy.name}
                   subtitle={
                     strategy.metrics
-                      ? `${formatPercent(strategy.metrics.cagr)} par an · Sharpe ${formatRatio(strategy.metrics.sharpe)}`
+                      ? `${formatPercent(strategy.metrics.moneyWeightedReturn ?? strategy.metrics.cagr)} par an · Sharpe ${formatRatio(strategy.metrics.sharpe)}`
                       : "jamais lancée"
                   }
                   // La composition est ce qui distingue vraiment deux

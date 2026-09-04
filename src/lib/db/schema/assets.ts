@@ -85,7 +85,31 @@ export const assets = pgTable(
     /** Répartition sectorielle en pourcentages : { "Technologie": 24.5, ... }. */
     sectorBreakdown: jsonb("sector_breakdown").$type<Record<string, number>>(),
     geoBreakdown: jsonb("geo_breakdown").$type<Record<string, number>>(),
+    /** Répartition par taille de capitalisation : { "Grandes": 86, "Moyennes": 14 }.
+     *
+     *  `null` pour tout ce qui n'a pas de capitalisation boursière — une
+     *  obligation, un métal, une crypto. Ce n'est pas une donnée manquante mais
+     *  une catégorie sans objet, et l'agrégation la traite comme telle : elle ne
+     *  porte que sur la poche actions, faute de quoi un portefeuille à 40 %
+     *  d'obligations afficherait 40 % de « non renseigné » et deviendrait
+     *  illisible. */
+    capBreakdown: jsonb("cap_breakdown").$type<Record<string, number>>(),
     inceptionDate: date("inception_date"),
+    /** Première date à partir de laquelle les cours sont exploitables.
+     *
+     *  `null` dans le cas normal : toute la série sert. Renseigné uniquement
+     *  pour corriger une anomalie constatée chez le fournisseur — cotations
+     *  figées d'une ligne pas encore réellement échangée, discontinuité sans
+     *  opération sur titre correspondante. Les points antérieurs sont alors
+     *  ignorés, et le proxy prend le relais comme pour n'importe quel actif
+     *  jeune.
+     *
+     *  C'est une donnée curatée, au même titre que `peaEligible` : elle résulte
+     *  d'un constat documenté, jamais d'une correction automatique. Fabriquer
+     *  une valeur de remplacement serait pire que l'anomalie ; on se contente
+     *  de ne pas utiliser ce qu'on sait faux. Détecté par
+     *  `scripts/verify-proxies.ts`. */
+    priceHistoryFrom: date("price_history_from"),
     /** Actif plus ancien utilisé pour prolonger l'historique vers le passé.
      *  Référence un autre actif plutôt qu'un ticker libre : le proxy passe ainsi
      *  par le même cache de prix et la même logique de récupération. */

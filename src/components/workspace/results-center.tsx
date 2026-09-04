@@ -18,7 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  capBreakdown,
   collapseTail,
+  equityShareOf,
   geoBreakdown,
   sectorBreakdown,
 } from "@/lib/backtest/breakdowns";
@@ -27,6 +29,8 @@ import {
   isRealMode,
 } from "@/lib/backtest/displayed-metrics";
 import type { StrategyBacktestResponse } from "@/lib/backtest/run-for-strategy";
+import { RobustnessPanel } from "@/components/diversification/robustness-panel";
+import { analyseBacktestedStrategy } from "@/lib/diversification/from-backtest";
 import type { CorrelationMatrix } from "@/lib/engine/analytics";
 import { scoreAllMetrics } from "@/lib/engine/scoring";
 import {
@@ -162,6 +166,9 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
   const scores = scoreAllMetrics(metrics);
 
   const gainPositive = metrics.totalGain >= 0;
+  /** Chiffre de tête : ce que l'argent a rapporté, pas ce que l'allocation a
+   *  produit période par période. */
+  const headlineReturn = metrics.moneyWeightedReturn;
   const correlationText = result.analytics.correlation
     ? correlationSummary(result.analytics.correlation)
     : null;
@@ -283,11 +290,30 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
       </section>
 
       <div className="grid gap-3 sm:grid-cols-3">
+        {/* Le rendement de l'argent placé, et non le rendement annualisé de
+            l'allocation. Les deux sont justes, mais « ça rapporte X % par an »
+            se lit spontanément comme « mon argent croît de X % par an », ce qui
+            est la définition du premier. Le second, comparable aux chiffres
+            publiés des indices, reste dans les ratios d'expert. */}
         <PlainStat
           label="Ça rapporte"
-          value={`${formatPercent(metrics.cagr)} par an`}
-          hint={`en moyenne, sur ${metrics.effectiveYears.toFixed(0)} ans`}
-          tone={metrics.cagr >= 0 ? "positive" : "negative"}
+          value={
+            headlineReturn === null
+              ? "—"
+              : `${formatPercent(headlineReturn)} par an`
+          }
+          hint={
+            headlineReturn === null
+              ? "aucun versement à faire fructifier"
+              : `sur votre argent, versements compris, sur ${metrics.effectiveYears.toFixed(0)} ans`
+          }
+          tone={
+            headlineReturn === null
+              ? undefined
+              : headlineReturn >= 0
+                ? "positive"
+                : "negative"
+          }
         />
         <PlainStat
           label="Le pire moment"
@@ -461,7 +487,19 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
             )}
           </div>
 
-          <div className="grid gap-4 rounded-2xl border bg-card p-5 sm:grid-cols-2">
+          <Section
+            title="Robustesse de l'allocation"
+            description="Ce que la composition tient, et ce qu'elle laisse de côté. Indépendant de la performance passée : un portefeuille peut avoir bien fait tout en étant fragile."
+          >
+            <RobustnessPanel
+              report={analyseBacktestedStrategy(
+                assets,
+                result.analytics.correlation,
+              )}
+            />
+          </Section>
+
+          <div className="grid gap-5 rounded-2xl border bg-card p-5 sm:grid-cols-2 xl:grid-cols-3">
             <BreakdownDonut
               title="Par zone géographique"
               slices={collapseTail(geoBreakdown(assets))}
@@ -471,6 +509,22 @@ export function ResultsCenter({ data }: { data: StrategyBacktestResponse }) {
               title="Par secteur"
               slices={collapseTail(sectorBreakdown(assets))}
               emptyLabel="Aucune décomposition sectorielle disponible pour ces actifs."
+            />
+            <BreakdownDonut
+              title="Par taille de capitalisation"
+              slices={capBreakdown(assets)}
+              // Muet quand le portefeuille est intégralement en actions :
+              // préciser « sur la part actions (100 %) » n'apprend rien et
+              // laisse croire à une restriction là où il n'y en a pas.
+              note={
+                equityShareOf(assets) >= 99.5
+                  ? undefined
+                  : `Sur la part actions du portefeuille (${formatPercent(
+                      equityShareOf(assets) / 100,
+                      0,
+                    )}).`
+              }
+              emptyLabel="Aucune poche actions dans ce portefeuille."
             />
           </div>
         </div>

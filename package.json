@@ -16,7 +16,8 @@
     "verify:catalog": "tsx scripts/verify-catalog.ts",
     "refresh:liquidity": "tsx scripts/refresh-liquidity.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:proxies": "tsx scripts/verify-proxies.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

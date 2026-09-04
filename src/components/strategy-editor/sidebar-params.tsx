@@ -158,7 +158,13 @@ export function SidebarParams({
             <Slider
               id="years"
               min={1}
-              max={30}
+              // 40 ans, comme le schéma de validation. Le plafond réel n'est pas
+              // ici mais dans les données : le change euro/dollar commence au
+              // 4 janvier 1999, et le moteur ne valorise aucun support en
+              // devise étrangère avant. Demander davantage ne produit pas
+              // d'erreur, la période effective est simplement tronquée et
+              // affichée telle quelle.
+              max={40}
               step={1}
               value={[values.years]}
               onValueChange={([years]) => onChange({ years })}

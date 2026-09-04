@@ -415,8 +415,7 @@ describe("actifs plus jeunes que la période demandée", () => {
     const proxy = makeSeries("2015-01-01", 1_400, (i) => 3_000 + i);
     const young = makeAsset("JEUNE", youngPrices, {
       targetWeight: 0.5,
-      proxyPrices: proxy,
-      proxyCurrency: "EUR",
+      proxies: [{ prices: proxy, currency: "EUR" }],
     });
 
     const result = runBacktest(
@@ -444,8 +443,7 @@ describe("actifs plus jeunes que la période demandée", () => {
     const proxy = makeSeries("2015-01-01", 1_400, (i) => 3_000 + i);
     const young = makeAsset("JEUNE", youngPrices, {
       targetWeight: 1,
-      proxyPrices: proxy,
-      proxyCurrency: "EUR",
+      proxies: [{ prices: proxy, currency: "EUR" }],
     });
 
     const result = runBacktest(
@@ -458,6 +456,77 @@ describe("actifs plus jeunes que la période demandée", () => {
     const proxyDays = result.series.portfolio.filter((p) => p.hasProxyData);
     expect(proxyDays.length).toBeGreaterThan(0);
     expect(proxyDays.every((p) => p.date < "2020-01-01")).toBe(true);
+  });
+
+  it("enchaîne deux relais pour remonter au-delà du premier", () => {
+    // Cas réel du catalogue : un ETF émergents de 2020 se prolonge par un fonds
+    // qui réplique le même indice mais ne remonte qu'à 2015, puis par un fonds
+    // plus ancien, moins fidèle, qui va jusqu'en 2010. Chaque relais n'est
+    // employé que là où le précédent s'arrête.
+    const proche = makeSeries("2015-01-01", 1_400, (i) => 3_000 + i);
+    const ancien = makeSeries("2010-01-01", 2_700, (i) => 500 + i * 0.5);
+
+    const young = makeAsset("JEUNE", youngPrices, {
+      targetWeight: 1,
+      proxies: [
+        { prices: proche, currency: "EUR" },
+        { prices: ancien, currency: "EUR" },
+      ],
+    });
+
+    const result = runBacktest(
+      makeInput(
+        [young],
+        makeParams({ years: 30, youngAssetResolution: "use-proxy" }),
+      ),
+    );
+
+    // La période remonte au second relais, pas seulement au premier.
+    expect(result.metrics.startDate < "2015-01-01").toBe(true);
+    expect(result.usedProxyData).toBe(true);
+
+    // Les trois niveaux de prix n'ont rien à voir entre eux — 100, 3 000 et
+    // 500 — et pourtant la courbe ne doit présenter aucun saut : chaque relais
+    // est mis à l'échelle de ce qui a déjà été reconstitué.
+    const values = result.series.portfolio.map((p) => p.value);
+    const biggestJump = values
+      .slice(1)
+      .reduce((max, v, i) => Math.max(max, Math.abs(v / values[i] - 1)), 0);
+    expect(biggestJump).toBeLessThan(0.05);
+
+    // Tout ce qui précède la cotation propre est marqué comme reconstitué,
+    // quel que soit le relais qui l'a fourni.
+    const proxyDays = result.series.portfolio.filter((p) => p.hasProxyData);
+    expect(proxyDays.every((p) => p.date < "2020-01-01")).toBe(true);
+    expect(
+      proxyDays.some((p) => p.date < "2015-01-01"),
+    ).toBe(true);
+  });
+
+  it("s'arrête au relais le plus profond exploitable en devise", () => {
+    // Le second relais cote en dollars et remonte à 2010, mais le change n'est
+    // connu qu'à partir de 2016 : la période ne peut pas commencer avant, même
+    // si la série de cours, elle, existe.
+    const proche = makeSeries("2018-01-01", 500, (i) => 3_000 + i);
+    const ancien = makeSeries("2010-01-01", 2_700, (i) => 500 + i * 0.5);
+
+    const young = makeAsset("JEUNE", youngPrices, {
+      targetWeight: 1,
+      proxies: [
+        { prices: proche, currency: "EUR" },
+        { prices: ancien, currency: "USD" },
+      ],
+    });
+
+    const input = makeInput(
+      [young],
+      makeParams({ years: 30, youngAssetResolution: "use-proxy" }),
+    );
+    input.fx = { USD: makeSeries("2016-01-01", 2_600, () => 1).map((p) => ({ date: p.date, rateToEur: 0.9 })) };
+
+    const result = runBacktest(input);
+
+    expect(result.metrics.startDate >= "2016-01-01").toBe(true);
   });
 });
 

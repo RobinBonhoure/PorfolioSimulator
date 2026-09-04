@@ -80,6 +80,16 @@ export interface CatalogAsset extends AssetSearchResult {
   topGeo: string | null;
   /** Secteur dominant, pour l'affichage seul. */
   topSector: string | null;
+  /** Décompositions complètes.
+   *
+   *  Transmises jusqu'au client, contrairement à `topGeo` et `topSector` qui
+   *  n'en sont qu'un résumé d'affichage. Le parcours de diversification note
+   *  l'allocation à chaque mouvement de curseur : refaire un aller-retour
+   *  serveur à chaque clic pour une donnée figée serait absurde, et la
+   *  quarantaine d'actifs du catalogue pèse quelques dizaines de kilo-octets. */
+  geoBreakdown: Record<string, number> | null;
+  sectorBreakdown: Record<string, number> | null;
+  capBreakdown: Record<string, number> | null;
 }
 
 /** Catégorie la plus lourde d'une répartition. */
@@ -114,6 +124,9 @@ function toCatalogAsset(row: Asset): CatalogAsset {
     trackedIndex: row.trackedIndex,
     topGeo: dominantOf(row.geoBreakdown),
     topSector: dominantOf(row.sectorBreakdown),
+    geoBreakdown: row.geoBreakdown,
+    sectorBreakdown: row.sectorBreakdown,
+    capBreakdown: row.capBreakdown,
   };
 }
 

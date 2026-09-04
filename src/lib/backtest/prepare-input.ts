@@ -49,6 +49,69 @@ export interface EngineWindow {
   endDate?: IsoDate;
 }
 
+/** Longueur maximale d'une chaîne de relais.
+ *
+ *  Un garde-fou, pas un réglage : deux relais suffisent aux cas connus, et une
+ *  borne évite qu'une donnée mal saisie — un actif se référençant lui-même,
+ *  deux actifs se pointant l'un l'autre — ne fasse tourner la résolution
+ *  indéfiniment. Le jeu d'identifiants déjà vus attrape le cycle ; cette borne
+ *  attrape ce qu'il ne verrait pas. */
+const MAX_PROXY_DEPTH = 4;
+
+/**
+ * Déroule la chaîne de relais de chaque actif, du plus proche au plus ancien.
+ *
+ * Chargée en une requête par niveau plutôt qu'une par actif : les chaînes sont
+ * courtes et se recoupent largement — quatre ETF émergents partagent le même
+ * premier relais.
+ */
+async function resolveProxyChains(
+  primary: readonly Asset[],
+): Promise<Map<string, Asset[]>> {
+  const chains = new Map<string, Asset[]>(primary.map((a) => [a.id, []]));
+  const known = new Map<string, Asset>(primary.map((a) => [a.id, a]));
+
+  /** Actifs dont il reste à résoudre le relais, par actif d'origine. */
+  let frontier = primary
+    .filter((a) => a.proxyAssetId !== null)
+    .map((a) => ({ rootId: a.id, nextId: a.proxyAssetId!, seen: new Set([a.id]) }));
+
+  for (let depth = 0; depth < MAX_PROXY_DEPTH && frontier.length > 0; depth += 1) {
+    const missing = frontier
+      .map((f) => f.nextId)
+      .filter((id) => !known.has(id));
+
+    if (missing.length > 0) {
+      const rows = await db
+        .select()
+        .from(assetsTable)
+        .where(inArray(assetsTable.id, [...new Set(missing)]));
+      for (const row of rows) known.set(row.id, row);
+    }
+
+    const next: typeof frontier = [];
+    for (const step of frontier) {
+      const asset = known.get(step.nextId);
+      // Un maillon absent interrompt la chaîne sans la casser : les relais
+      // déjà résolus restent utilisables.
+      if (!asset || step.seen.has(asset.id)) continue;
+
+      chains.get(step.rootId)!.push(asset);
+
+      if (asset.proxyAssetId) {
+        next.push({
+          rootId: step.rootId,
+          nextId: asset.proxyAssetId,
+          seen: new Set(step.seen).add(asset.id),
+        });
+      }
+    }
+    frontier = next;
+  }
+
+  return chains;
+}
+
 export async function prepareEngineInput(options: {
   selection: readonly StrategyAssetSelection[];
   params: StrategyParams;
@@ -70,16 +133,13 @@ export async function prepareEngineInput(options: {
     .from(assetsTable)
     .where(inArray(assetsTable.id, selectedIds));
 
-  const proxyIds = primary
-    .map((a) => a.proxyAssetId)
-    .filter((id): id is string => id !== null);
-
-  const proxies = proxyIds.length
-    ? await db
-        .select()
-        .from(assetsTable)
-        .where(inArray(assetsTable.id, proxyIds))
-    : [];
+  // Un proxy peut lui-même en avoir un : les relais se suivent, du substitut le
+  // plus fidèle au plus ancien. On déroule donc la chaîne au lieu de s'arrêter
+  // au premier maillon.
+  const chains = await resolveProxyChains(primary);
+  const proxies = [...new Map(
+    [...chains.values()].flat().map((asset) => [asset.id, asset]),
+  ).values()];
 
   const benchmark = options.benchmarkTicker
     ? ((
@@ -127,8 +187,6 @@ export async function prepareEngineInput(options: {
   // --- Construction de l'entrée ---------------------------------------------
 
   const byId = new Map(primary.map((a) => [a.id, a]));
-  const proxyById = new Map(proxies.map((a) => [a.id, a]));
-
   const engineAssets: AssetInput[] = [];
 
   for (const { assetId, targetWeight } of selection) {
@@ -137,10 +195,16 @@ export async function prepareEngineInput(options: {
       throw new Error(`Actif ${assetId} introuvable dans le catalogue.`);
     }
 
-    const proxy =
-      needProxies && asset.proxyAssetId
-        ? proxyById.get(asset.proxyAssetId)
-        : undefined;
+    const chain = needProxies ? (chains.get(asset.id) ?? []) : [];
+    const proxySeries = await Promise.all(
+      chain.map(async (proxy) => ({
+        currency: proxy.currency,
+        prices: await loadPriceSeries(
+          proxy.id,
+          proxy.priceHistoryFrom ?? undefined,
+        ),
+      })),
+    );
 
     engineAssets.push({
       id: asset.id,
@@ -150,9 +214,15 @@ export async function prepareEngineInput(options: {
       currency: asset.currency,
       targetWeight,
       peaEligible: asset.peaEligible,
-      prices: await loadPriceSeries(asset.id),
-      proxyPrices: proxy ? await loadPriceSeries(proxy.id) : undefined,
-      proxyCurrency: proxy?.currency,
+      // `priceHistoryFrom` écarte les cotations connues comme fausses. Écarter
+      // plutôt que corriger : l'actif se comporte alors exactement comme un
+      // actif jeune, et son proxy couvre la période, ce que l'interface sait
+      // déjà expliquer.
+      prices: await loadPriceSeries(
+        asset.id,
+        asset.priceHistoryFrom ?? undefined,
+      ),
+      proxies: proxySeries,
       hasProxyAvailable: asset.proxyAssetId !== null,
       inceptionDate: asset.inceptionDate ?? undefined,
     });
@@ -164,7 +234,10 @@ export async function prepareEngineInput(options: {
         ticker: benchmark.tickerYahoo,
         label: benchmark.shortLabel,
         currency: benchmark.currency,
-        prices: await loadPriceSeries(benchmark.id),
+        prices: await loadPriceSeries(
+          benchmark.id,
+          benchmark.priceHistoryFrom ?? undefined,
+        ),
       }
     : null;
 

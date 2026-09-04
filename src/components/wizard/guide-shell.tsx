@@ -70,7 +70,7 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
           // Le backtest porte sur la durée disponible dans le passé ; l'horizon
           // déclaré regarde vers l'avant. Trente ans est le maximum accepté par
           // le formulaire, et davantage d'historique vaut toujours mieux.
-          years: Math.min(30, Math.max(profile.horizonYears, 10)),
+          years: Math.min(40, Math.max(profile.horizonYears, 10)),
           assets: [],
         },
         // Historique complété par proxy, et ce n'est pas un détail. Les supports
@@ -119,7 +119,7 @@ export function GuideShell({ catalog }: { catalog: CatalogAsset[] }) {
       name: `${chosen.name} · ${profile.horizonYears} ans`,
       initialAmount: profile.initialAmount,
       monthlyContribution: profile.monthlyContribution,
-      years: Math.min(30, Math.max(profile.horizonYears, 10)),
+      years: Math.min(40, Math.max(profile.horizonYears, 10)),
       assets: assetsPayload,
     });
 

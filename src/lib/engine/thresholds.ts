@@ -19,6 +19,7 @@ export type ScoreLevel = 1 | 2 | 3 | 4 | 5;
 
 export type MetricKey =
   | "cagr"
+  | "moneyWeightedReturn"
   | "volatility"
   | "maxDrawdown"
   | "sharpe"
@@ -60,6 +61,24 @@ export const METRIC_THRESHOLDS: Record<MetricKey, MetricThreshold> = {
     interpretation:
       "Calculé sur les rendements pondérés par le temps : il mesure la performance des actifs choisis, indépendamment du calendrier de vos versements. Deux stratégies aux versements différents restent donc comparables.",
     reference: "MSCI World 2000-2025 : environ 6,5 % par an en euros.",
+  },
+
+  moneyWeightedReturn: {
+    label: "Rendement de votre argent",
+    format: "percent",
+    higherIsBetter: true,
+    // Mêmes bornes que le rendement annualisé : c'est la même grandeur, un
+    // taux de croissance annuel, et leur donner des échelles différentes
+    // interdirait de lire l'écart entre les deux d'un coup d'œil — alors que
+    // cet écart est précisément ce que la métrique apporte.
+    bounds: [0, 0.03, 0.06, 0.1],
+    levelLabels: ["Négatif", "Faible", "Correct", "Bon", "Excellent"],
+    definition:
+      "Taux annuel qui, appliqué à chacun de vos versements depuis sa date, aboutirait au montant final.",
+    interpretation:
+      "À comparer au rendement annualisé juste au-dessus. Celui-ci note l'allocation, période par période ; celui-là note ce que votre argent a réellement gagné. Les deux divergent dès qu'on verse régulièrement, et peuvent classer deux allocations en sens inverse : une allocation dont la hausse arrive tôt, quand peu d'argent est investi, affiche un excellent rendement annualisé pour un gain final modeste.",
+    reference:
+      "Sur un versement unique, les deux chiffres coïncident. Sur un versement mensuel, un écart de 1 à 3 points est courant.",
   },
 
   volatility: {

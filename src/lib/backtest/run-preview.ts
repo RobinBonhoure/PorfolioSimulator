@@ -92,6 +92,9 @@ export async function runBacktestPreview(
         targetWeight: entry.targetWeight,
         sectorBreakdown: asset.sectorBreakdown,
         geoBreakdown: asset.geoBreakdown,
+        capBreakdown: asset.capBreakdown,
+        assetClass: asset.assetClass,
+        trackedIndex: asset.trackedIndex,
         dataPartial: asset.dataPartial,
       };
     }),

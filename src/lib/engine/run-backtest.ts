@@ -13,6 +13,7 @@ import {
   monthsBetween,
 } from "./calendar";
 import { getAverageRiskFreeRate } from "./constants/risk-free-rate";
+import { despike } from "./despike";
 import { ZERO_FEES, orderCost, terFactorForElapsedDays } from "./fees";
 import { buildFxLookup, firstFxDate } from "./fx";
 import { buildDeflators } from "./inflation";
@@ -23,6 +24,7 @@ import {
   calmarRatio,
   cumulativeIndex,
   maxDrawdown,
+  moneyWeightedReturn,
   monthlyReturns,
   sharpeRatio,
   sortinoRatio,
@@ -41,6 +43,7 @@ import {
   type FeesConfig,
   type IsoDate,
   type PortfolioDayPoint,
+  type PricePoint,
   type RealMetrics,
   type RebalancingPeriod,
   type YoungAssetWarning,
@@ -376,24 +379,34 @@ export function runBacktest(input: EngineInput): BacktestResult {
   // rejouer plusieurs allocations sur exactement la même fenêtre.
   const requestedStart = input.startDate ?? shiftYears(endDate, -params.years);
 
-  /** Première date exploitable d'un actif, contraintes de change comprises. */
+  /** Première date exploitable d'une série, sa contrainte de change comprise.
+   *
+   *  Un actif en devise n'est exploitable qu'à partir du premier taux de change
+   *  connu, même si sa cotation remonte plus loin. La contrainte se calcule
+   *  série par série : chaque relais a sa propre devise, et c'est la sienne qui
+   *  borne la portion qu'il couvre. */
+  const usableFrom = (
+    prices: PricePoint[],
+    currency: string,
+  ): IsoDate | null => {
+    const first = firstDateOf(prices);
+    if (!first) return null;
+
+    const fxStart = firstFxDate(currency, input.fx);
+    return fxStart && fxStart > first ? fxStart : first;
+  };
+
+  /** Première date exploitable d'un actif, relais compris. */
   const earliestUsable = (asset: AssetInput): IsoDate => {
-    const own = firstDateOf(asset.prices)!;
-    const proxyFirst =
-      useProxy && asset.proxyPrices?.length
-        ? firstDateOf(asset.proxyPrices)
-        : null;
+    const own = usableFrom(asset.prices, asset.currency)!;
+    if (!useProxy) return own;
 
-    let earliest = proxyFirst && proxyFirst < own ? proxyFirst : own;
-
-    // Un actif en devise n'est exploitable qu'à partir du premier taux de
-    // change connu, même si sa propre cotation remonte plus loin.
-    const fxStart = firstFxDate(asset.currency, input.fx);
-    if (fxStart && fxStart > earliest) earliest = fxStart;
-
-    if (useProxy && asset.proxyCurrency) {
-      const proxyFx = firstFxDate(asset.proxyCurrency, input.fx);
-      if (proxyFx && proxyFx > earliest) earliest = proxyFx;
+    // Le meilleur relais n'est pas forcément le premier de la liste : celle-ci
+    // est ordonnée par qualité de substitution, pas par ancienneté.
+    let earliest = own;
+    for (const proxy of asset.proxies ?? []) {
+      const start = usableFrom(proxy.prices, proxy.currency);
+      if (start && start < earliest) earliest = start;
     }
 
     return earliest;
@@ -424,15 +437,30 @@ export function runBacktest(input: EngineInput): BacktestResult {
         // On se fie au catalogue, pas aux séries chargées : celles-ci ne le
         // sont qu'une fois l'option choisie, et l'alerte précède ce choix.
         hasProxy:
-          asset.hasProxyAvailable ?? Boolean(asset.proxyPrices?.length),
+          asset.hasProxyAvailable ?? Boolean(asset.proxies?.length),
       } satisfies YoungAssetWarning;
     })
     .filter((w): w is YoungAssetWarning => w !== null);
 
   // --- Calendrier et cours en euros ----------------------------------------
 
-  const allSeries = assets.flatMap((a) =>
-    useProxy && a.proxyPrices ? [a.prices, a.proxyPrices] : [a.prices],
+  // Les relevés aberrants isolés sont écartés avant toute chose, calendrier
+  // compris : un pic laissé passer ici gonflerait la valeur d'une journée,
+  // fausserait la volatilité et pourrait déclencher un rééquilibrage sur seuil
+  // qui n'a pas eu lieu.
+  const cleaned = assets.map((asset) => ({
+    ...asset,
+    prices: despike(asset.prices).points,
+    proxies: asset.proxies?.map((proxy) => ({
+      ...proxy,
+      prices: despike(proxy.prices).points,
+    })),
+  }));
+
+  const allSeries = cleaned.flatMap((a) =>
+    useProxy && a.proxies?.length
+      ? [a.prices, ...a.proxies.map((p) => p.prices)]
+      : [a.prices],
   );
   const calendar = buildCalendar(allSeries, startDate, endDate);
 
@@ -442,7 +470,7 @@ export function runBacktest(input: EngineInput): BacktestResult {
     );
   }
 
-  const prepared: PreparedAsset[] = assets.map((asset) => {
+  const prepared: PreparedAsset[] = cleaned.map((asset) => {
     const fxRates = buildFxLookup(asset.currency, input.fx, calendar);
     const ownFilled = forwardFill(asset.prices, calendar);
     const ownEur = ownFilled.map((p, i) => (p === null ? null : p * fxRates[i]));
@@ -450,18 +478,24 @@ export function runBacktest(input: EngineInput): BacktestResult {
     let prices = ownEur;
     let isProxy = new Array<boolean>(calendar.length).fill(false);
 
-    if (useProxy && asset.proxyPrices?.length) {
-      const proxyFx = buildFxLookup(
-        asset.proxyCurrency ?? asset.currency,
-        input.fx,
-        calendar,
-      );
-      const proxyEur = forwardFill(asset.proxyPrices, calendar).map((p, i) =>
-        p === null ? null : p * proxyFx[i],
-      );
-      const spliced = spliceProxy(ownEur, proxyEur);
-      prices = spliced.prices;
-      isProxy = spliced.isProxy;
+    if (useProxy && asset.proxies?.length) {
+      // Les relais sont appliqués dans l'ordre, du plus proche au plus ancien.
+      // Chacun se raccorde à ce qui a déjà été reconstitué, et non à la série
+      // d'origine : le second relais est donc mis à l'échelle du premier, au
+      // point où celui-ci s'arrête. C'est ce qui rend la courbe continue d'un
+      // bout à l'autre malgré des niveaux de prix sans rapport entre eux.
+      for (const proxy of asset.proxies) {
+        const proxyFx = buildFxLookup(proxy.currency, input.fx, calendar);
+        const proxyEur = forwardFill(proxy.prices, calendar).map((p, i) =>
+          p === null ? null : p * proxyFx[i],
+        );
+
+        const spliced = spliceProxy(prices, proxyEur);
+        prices = spliced.prices;
+        // Une date valorisée par un relais le reste : le drapeau se cumule
+        // d'un relais à l'autre, il ne se remplace pas.
+        isProxy = isProxy.map((flag, i) => flag || spliced.isProxy[i]);
+      }
     }
 
     const firstMissing = prices.findIndex((p) => p === null || p <= 0);
@@ -515,6 +549,11 @@ export function runBacktest(input: EngineInput): BacktestResult {
     fees: run.fees,
     feeImpact: grossRun.values[grossRun.values.length - 1] - finalValue,
     totalReturn: totalInvested > 0 ? finalValue / totalInvested - 1 : 0,
+    moneyWeightedReturn: moneyWeightedReturn(
+      run.contributions,
+      finalValue,
+      calendar,
+    ),
     ...nominal,
   };
 
@@ -768,6 +807,15 @@ function realMetricsOf(input: {
     totalInvested: realInvested,
     totalGain: realFinal - realInvested,
     totalReturn: realInvested > 0 ? realFinal / realInvested - 1 : 0,
+    // Chaque versement est déflaté à sa propre date avant d'entrer dans le
+    // calcul du taux : c'est le même raisonnement que pour `realInvested`, et
+    // il compte double ici puisque la date de chaque flux fait partie de
+    // l'équation.
+    moneyWeightedReturn: moneyWeightedReturn(
+      input.contributions.map((amount, i) => amount * deflators[i]),
+      realFinal,
+      input.calendar,
+    ),
     annualInflation,
     ...returnMetrics(realReturns, input.calendar, effectiveYears, realRiskFree),
   };

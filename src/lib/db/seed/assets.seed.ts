@@ -78,6 +78,18 @@ const PROXY_ASSETS: SeedAsset[] = [
     ter: "0.0070",
     currency: "USD",
     inceptionDate: "2003-04-14",
+    // Un relais qui a lui-même un relais, seul cas du catalogue. `EEM` est le
+    // meilleur substitut des quatre ETF émergents — il réplique exactement leur
+    // indice — mais il ne remonte qu'à avril 2003 et plafonnait donc à cette
+    // date tout portefeuille en contenant une ligne. `VEIEX` prend le relais
+    // au-delà : mesuré contre `EEM` sur les vingt-trois ans où les deux
+    // existent, il donne 0,969 de corrélation pour 0,13 point de dérive. C'est
+    // un mauvais substitut des ETF eux-mêmes — d'où son rejet à ce poste — et
+    // un très bon substitut d'`EEM`, ce qui est exactement ce qu'on lui demande
+    // ici. Une hypothèse a été écartée au passage : le reclassement de la Corée
+    // du Sud par FTSE en 2009 n'explique pas l'écart, la corrélation valant
+    // 0,967 avant et 0,969 après.
+    proxyTicker: "VEIEX",
     isCatalog: false,
     dataPartial: true,
   },
@@ -188,6 +200,107 @@ const PROXY_ASSETS: SeedAsset[] = [
     ter: "0.0019",
     currency: "USD",
     inceptionDate: "2000-05-26",
+    isCatalog: false,
+    dataPartial: true,
+  },
+
+  // --- Proxys de profondeur ------------------------------------------------
+  //
+  // Ajoutés pour repousser le début des backtests. Deux familles :
+  //
+  // `WLD.PA` est un ETF MSCI World coté à Paris **en euros**, dix-huit mois
+  // plus ancien que CW8. Sa devise compte autant que son antériorité : une
+  // série en euros échappe entièrement au plafond du change.
+  //
+  // Les deux autres sont des **fonds indiciels Vanguard**. Pourquoi pas les
+  // indices eux-mêmes, qui remontent bien plus loin : un indice de prix comme
+  // `^GSPC` couvre 1927 mais exclut les dividendes, et l'écart mesuré sur
+  // 1988-2026 atteint 2,30 points par an — un capital final sous-estimé d'un
+  // facteur 2,2. Les versions rendement total existent mais Yahoo les sert mal
+  // (`^SP500TR` démarre en 1988, `^RUTTR` en 1995, `^SXXR` pas du tout), et
+  // sont de toute façon plus courtes que les fonds. La valeur liquidative
+  // ajustée d'un fonds indiciel réinvestit les dividendes et remonte plus loin.
+  // Contrepartie assumée : elle est nette des frais du fonds, que le moteur
+  // recompte ensuite avec le TER de l'ETF cible — environ 0,14 point par an de
+  // double comptage sur les seules années de proxy, négligeable devant les
+  // 2,30 points d'un indice de prix.
+  //
+  // Deux candidats ont été essayés puis **écartés sur mesure**, et c'est la
+  // raison d'être de `scripts/verify-proxies.ts` : `VEIEX` pour les marchés
+  // émergents et `NAESX` pour les petites capitalisations. Tous deux gagnaient
+  // en profondeur et perdaient en fidélité — sur les quatre ETF émergents,
+  // `EEM` réplique exactement leur indice et ressort à 0,96-0,98 de corrélation
+  // quand `VEIEX` plafonne à 0,93-0,95. La règle qui s'en dégage : à écart de
+  // fidélité comparable on prend le plus profond, mais un indice différent ne
+  // se rattrape jamais par de l'antériorité.
+  //
+  // `VEIEX` a toutefois retrouvé un emploi, un cran plus bas : il prolonge non
+  // pas les ETF mais `EEM` lui-même, au-delà d'avril 2003 où celui-ci s'arrête.
+  // C'est le seul endroit du catalogue où un relais en a un autre, et la règle
+  // ci-dessus y est respectée plutôt que contournée : le substitut fidèle sert
+  // partout où il existe, l'approximation ne couvre que la portion où plus rien
+  // d'autre n'existe.
+  {
+    tickerYahoo: "WLD.PA",
+    isin: "FR0010315770",
+    name: "Amundi MSCI World UCITS ETF Acc",
+    shortLabel: "MSCI World — WLD (proxy)",
+    aliases: ["world proxy", "wld"],
+    type: "etf",
+    assetClass: "equity",
+    trackedIndex: "MSCI World",
+    peaEligible: true,
+    ter: "0.0038",
+    currency: "EUR",
+    inceptionDate: "2008-01-01",
+    isCatalog: false,
+    dataPartial: true,
+  },
+  {
+    tickerYahoo: "VEIEX",
+    isin: null,
+    name: "Vanguard Emerging Markets Stock Index Fund Investor Shares",
+    shortLabel: "Émergents — VEIEX (proxy de second rang)",
+    aliases: ["emergents proxy", "veiex"],
+    type: "etf",
+    assetClass: "equity",
+    trackedIndex: "FTSE Emerging Markets",
+    peaEligible: false,
+    ter: "0.0028",
+    currency: "USD",
+    inceptionDate: "1994-05-04",
+    isCatalog: false,
+    dataPartial: true,
+  },
+  {
+    tickerYahoo: "VEURX",
+    isin: null,
+    name: "Vanguard European Stock Index Fund Investor Shares",
+    shortLabel: "Europe — VEURX (proxy)",
+    aliases: ["europe proxy", "veurx"],
+    type: "etf",
+    assetClass: "equity",
+    trackedIndex: "FTSE Developed Europe",
+    peaEligible: false,
+    ter: "0.0016",
+    currency: "USD",
+    inceptionDate: "1990-06-18",
+    isCatalog: false,
+    dataPartial: true,
+  },
+  {
+    tickerYahoo: "VGTSX",
+    isin: null,
+    name: "Vanguard Total International Stock Index Fund Investor Shares",
+    shortLabel: "Monde hors USA — VGTSX (proxy)",
+    aliases: ["monde hors usa proxy", "vgtsx"],
+    type: "etf",
+    assetClass: "equity",
+    trackedIndex: "FTSE Global All Cap ex US",
+    peaEligible: false,
+    ter: "0.0017",
+    currency: "USD",
+    inceptionDate: "1996-04-29",
     isCatalog: false,
     dataPartial: true,
   },
@@ -450,6 +563,41 @@ const SMALL_CAP_GEO = {
   Autres: 13,
 };
 
+// --- Tailles de capitalisation ---------------------------------------------
+//
+// La taille n'est pas une nuance de style : c'est la diversification que les
+// indices grand public omettent en silence. Un MSCI World s'annonce comme « le
+// monde » alors qu'il s'arrête, par construction, aux grandes et moyennes
+// capitalisations — les petites, soit environ 14 % de la capitalisation
+// mondiale investissable, en sont absentes. Aucun écran ne le dit à
+// l'investisseur, d'où ces décompositions.
+//
+// Découpage retenu : la frontière MSCI, qui range dans « Grandes » les 70 %
+// supérieurs de la capitalisation de chaque marché, dans « Moyennes » les 15
+// points suivants et dans « Petites » les 15 derniers. Les chiffres ci-dessous
+// sont des instantanés arrondis, au même titre indicatif que les répartitions
+// sectorielles.
+
+/** Indices « standard » : grandes + moyennes, sans petites. MSCI World, MSCI
+ *  Europe, MSCI EM et leurs déclinaisons régionales suivent tous ce périmètre. */
+const LARGE_MID_CAPS = { Grandes: 86, Moyennes: 14 };
+
+/** Indices IMI (*Investable Market Index*) : le marché entier, petites incluses.
+ *  C'est le seul périmètre indiciel qui mérite le nom de « tout le marché ». */
+const IMI_CAPS = { Grandes: 71, Moyennes: 15, Petites: 14 };
+
+/** Indices de très grandes valeurs : S&P 500, EURO STOXX 50, CAC 40, Nasdaq 100.
+ *  Les quelques valeurs qui glisseraient en « moyennes » chez MSCI ne pèsent
+ *  pas assez pour justifier une ligne. */
+const MEGA_CAPS = { Grandes: 100 };
+
+/** Stoxx Europe 600 et TOPIX : plus larges qu'un indice standard, ils
+ *  descendent jusqu'aux petites valeurs sans aller aussi bas qu'un IMI. */
+const BROAD_CAPS = { Grandes: 72, Moyennes: 23, Petites: 5 };
+
+/** Indices de petites capitalisations. Par définition, rien d'autre. */
+const SMALL_CAPS = { Petites: 100 };
+
 // Répartition des émetteurs de dette, en pourcentage de l'encours. Indicative
 // et arrondie, comme les autres décompositions de ce fichier.
 const EURO_GOVT_GEO = {
@@ -472,10 +620,15 @@ const EURO_CORP_GEO = {
   Autres: 21,
 };
 
-/** Une action expose un secteur et un pays uniques. */
+/** Une action expose un secteur et un pays uniques.
+ *
+ *  Toutes celles du catalogue sont de très grandes capitalisations — c'est le
+ *  critère qui les y a fait entrer. Une action de petite capitalisation y
+ *  entrerait avec sa propre décomposition, pas avec ce helper. */
 const stock = (sector: string, country: string) => ({
   sectorBreakdown: { [sector]: 100 },
   geoBreakdown: { [country]: 100 },
+  capBreakdown: MEGA_CAPS,
 });
 
 // ---------------------------------------------------------------------------
@@ -498,7 +651,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: MSCI_WORLD_SECTORS,
     geoBreakdown: MSCI_WORLD_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2009-06-16",
+    proxyTicker: "WLD.PA",
   },
   {
     tickerYahoo: "WPEA.PA",
@@ -515,8 +670,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: MSCI_WORLD_SECTORS,
     geoBreakdown: MSCI_WORLD_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2024-04-02",
-    proxyTicker: "CW8.PA",
+    proxyTicker: "WLD.PA",
   },
   {
     tickerYahoo: "DCAM.PA",
@@ -532,8 +688,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: MSCI_WORLD_SECTORS,
     geoBreakdown: MSCI_WORLD_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2025-03-04",
-    proxyTicker: "CW8.PA",
+    proxyTicker: "WLD.PA",
   },
 
   // --- ETF S&P 500 ---------------------------------------------------------
@@ -551,6 +708,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: SP500_SECTORS,
     geoBreakdown: SP500_GEO,
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2019-04-25",
     proxyTicker: "SPY",
   },
@@ -568,6 +726,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: SP500_SECTORS,
     geoBreakdown: SP500_GEO,
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2013-09-16",
     proxyTicker: "SPY",
   },
@@ -585,7 +744,22 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: SP500_SECTORS,
     geoBreakdown: SP500_GEO,
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2010-05-19",
+    // Les cotations Yahoo des six premiers mois ne sont pas exploitables : le
+    // cours reste figé à 96,95 pendant huit séances d'octobre 2010 puis chute
+    // de 24,6 % le 1er novembre, sans opération sur titre correspondante et
+    // alors que le S&P 500 était quasi stable ce jour-là. Le rapport, 1,327,
+    // ne correspond à aucun ratio de division ni à une conversion de devise —
+    // ce sont des relevés erronés sur une ligne Xetra encore peu échangée.
+    //
+    // La preuve est dans la comparaison : sur la série complète, SXR8 corrèle
+    // à 0,85 avec SPY, contre 0,999 avec ESE et 0,995 avec PE500, deux ETF du
+    // même indice dont l'historique commence après l'anomalie. Le défaut est
+    // donc bien dans ces points-là, pas dans le reste de la série.
+    //
+    // SPY couvre la période, comme pour n'importe quel actif jeune.
+    priceHistoryFrom: "2010-11-01",
     proxyTicker: "SPY",
   },
 
@@ -604,6 +778,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EM_SECTORS,
     geoBreakdown: EM_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2019-04-25",
     proxyTicker: "EEM",
   },
@@ -621,6 +796,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: US_TECH_SECTORS,
     geoBreakdown: US_TECH_GEO,
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2019-04-25",
     proxyTicker: "QQQ",
   },
@@ -640,7 +816,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: MSCI_WORLD_SECTORS,
     geoBreakdown: MSCI_WORLD_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2009-09-25",
+    proxyTicker: "WLD.PA",
   },
   {
     tickerYahoo: "VWCE.DE",
@@ -656,6 +834,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: MSCI_WORLD_SECTORS,
     geoBreakdown: ALL_WORLD_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2019-07-29",
     proxyTicker: "VT",
   },
@@ -680,8 +859,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EUROPE_SECTORS,
     geoBreakdown: EUROPE_GEO,
+    capBreakdown: BROAD_CAPS,
     inceptionDate: "2024-02-19",
-    proxyTicker: "EXSA.DE",
+    proxyTicker: "VEURX",
   },
   {
     tickerYahoo: "PCEU.PA",
@@ -697,8 +877,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EUROPE_SECTORS,
     geoBreakdown: EUROPE_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2019-04-25",
-    proxyTicker: "IMEU.AS",
+    proxyTicker: "VEURX",
   },
   {
     tickerYahoo: "C50.PA",
@@ -714,6 +895,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EUROZONE_SECTORS,
     geoBreakdown: EUROZONE_GEO,
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2008-09-16",
   },
   {
@@ -730,6 +912,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: CAC40_SECTORS,
     geoBreakdown: { France: 100 },
+    capBreakdown: MEGA_CAPS,
     inceptionDate: "2008-01-02",
   },
   {
@@ -746,7 +929,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EUROPE_SECTORS,
     geoBreakdown: EUROPE_GEO,
+    capBreakdown: BROAD_CAPS,
     inceptionDate: "2008-01-02",
+    proxyTicker: "VEURX",
   },
   {
     tickerYahoo: "IMEU.AS",
@@ -762,7 +947,9 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EUROPE_SECTORS,
     geoBreakdown: EUROPE_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2008-01-02",
+    proxyTicker: "VEURX",
   },
 
   // --- ETF marchés émergents et Asie ---------------------------------------
@@ -780,6 +967,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EM_SECTORS,
     geoBreakdown: EM_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2010-11-30",
     proxyTicker: "EEM",
   },
@@ -799,6 +987,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EM_SECTORS,
     geoBreakdown: EM_GEO,
+    capBreakdown: IMI_CAPS,
     inceptionDate: "2014-06-02",
     proxyTicker: "EEM",
   },
@@ -816,9 +1005,15 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: EM_ASIA_SECTORS,
     geoBreakdown: EM_ASIA_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2019-04-25",
     // L'indice émergent large sert d'approximation : l'Asie en constitue la
     // plus grande part, mais le raccord reste une reconstitution imparfaite.
+    // Asie émergente prolongée par les émergents dans leur ensemble : 0,943 de
+    // corrélation, 1,65 point de dérive. L'écart tient à l'Amérique latine et
+    // à l'EMEA, absents du support et présents dans le proxy. Aucun fonds
+    // Asie émergente n'a d'historique plus long, et `VEIEX` — essayé — fait
+    // pire (0,882) en excluant la Corée du Sud.
     proxyTicker: "EEM",
   },
 
@@ -841,6 +1036,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: JAPAN_SECTORS,
     geoBreakdown: JAPAN_GEO,
+    capBreakdown: BROAD_CAPS,
     inceptionDate: "2019-04-25",
     proxyTicker: "EWJ",
   },
@@ -858,7 +1054,15 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: JAPAN_SECTORS,
     geoBreakdown: JAPAN_GEO,
+    capBreakdown: IMI_CAPS,
     inceptionDate: "2009-09-25",
+    // Division d'actions non répercutée sur les cours ajustés de Yahoo : le
+    // 13 octobre 2009, la série passe de 24,405 à 16,450 et n'y revient
+    // jamais. Le rapport, 1,483, est celui d'une division de trois pour deux ;
+    // le Japon, lui, n'a pas perdu un tiers de sa valeur ce jour-là. Les trois
+    // semaines antérieures sont donc libellées sur une autre base et
+    // fausseraient tout raccord. EWJ couvre la période.
+    priceHistoryFrom: "2009-10-13",
     proxyTicker: "EWJ",
   },
 
@@ -879,8 +1083,15 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: WORLD_EX_US_SECTORS,
     geoBreakdown: WORLD_EX_US_GEO,
+    capBreakdown: LARGE_MID_CAPS,
     inceptionDate: "2024-03-11",
-    proxyTicker: "VEU",
+    // Monde développé hors États-Unis prolongé par un fonds qui inclut, lui, les
+    // émergents et les petites capitalisations : 0,943 de corrélation pour
+    // 5,91 points de dérive, mesurés sur seulement deux ans et demi de
+    // recouvrement, ce qui rend l'estimation de dérive très bruitée. Le proxy
+    // précédent, `VEU`, faisait légèrement moins bien sur les deux critères
+    // (0,941 et 6,23) pour huit ans d'historique en moins.
+    proxyTicker: "VGTSX",
   },
   {
     tickerYahoo: "IUSN.DE",
@@ -896,6 +1107,7 @@ const CATALOG_ASSETS: SeedAsset[] = [
     currency: "EUR",
     sectorBreakdown: SMALL_CAP_SECTORS,
     geoBreakdown: SMALL_CAP_GEO,
+    capBreakdown: SMALL_CAPS,
     inceptionDate: "2018-04-26",
     // Le Russell 2000 ne couvre que les petites valeurs américaines, qui pèsent
     // environ 60 % de l'indice monde : approximation assumée.
@@ -918,6 +1130,11 @@ const CATALOG_ASSETS: SeedAsset[] = [
     sectorBreakdown: { "Or physique": 100 },
     geoBreakdown: { "Matières premières": 100 },
     inceptionDate: "2019-05-23",
+    // Or physique contre contrats à terme : `verify-proxies` mesure 0,856 de
+    // corrélation et 2,47 points de dérive, et c'est attendu. Un contrat à
+    // terme se reporte d'échéance en échéance, avec un coût ou un gain de
+    // portage que le métal détenu en coffre n'a pas. C'est le seul historique
+    // long disponible pour l'or, et l'écart est dans le sens prudent.
     proxyTicker: "GC=F",
   },
   {

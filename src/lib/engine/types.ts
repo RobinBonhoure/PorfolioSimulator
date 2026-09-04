@@ -15,7 +15,7 @@
 /** Version de la logique de calcul. Toute modification du moteur susceptible de
  *  changer un résultat doit l'incrémenter : elle entre dans le hash de
  *  paramètres et invalide donc les résultats mis en cache. */
-export const ENGINE_VERSION = 1;
+export const ENGINE_VERSION = 2;
 
 /** 252 jours de bourse par an : convention de marché pour l'annualisation. */
 export const TRADING_DAYS_PER_YEAR = 252;
@@ -101,6 +101,12 @@ export interface InflationPoint {
   hicpIndex: number;
 }
 
+/** Un relais d'historique, avec sa propre devise de cotation. */
+export interface ProxySeries {
+  prices: PricePoint[];
+  currency: string;
+}
+
 export interface AssetInput {
   id: string;
   ticker: string;
@@ -113,13 +119,20 @@ export interface AssetInput {
   /** Donnée curatée du catalogue. `null` = inconnu, traité comme non bloquant. */
   peaEligible?: boolean | null;
   prices: PricePoint[];
-  /** Série du proxy, en devise du proxy, utilisée avant `inceptionDate`.
-   *  Absente tant que l'utilisateur n'a pas choisi d'y recourir : on ne
-   *  télécharge pas trente ans d'historique pour rien. */
-  proxyPrices?: PricePoint[];
-  proxyCurrency?: string;
+  /** Relais successifs pour prolonger l'historique vers le passé, **du plus
+   *  proche au plus ancien**.
+   *
+   *  Une liste et non un relais unique, parce que le meilleur substitut n'est
+   *  pas toujours le plus ancien. Un ETF émergents récent se prolonge d'abord
+   *  par un fonds qui réplique exactement son indice, et seulement au-delà, là
+   *  où celui-ci s'arrête, par un fonds plus ancien mais moins fidèle. Chaque
+   *  relais n'est ainsi employé que sur la portion où rien de mieux n'existe.
+   *
+   *  Vide tant que l'utilisateur n'a pas choisi d'y recourir : on ne télécharge
+   *  pas trente ans d'historique pour rien. */
+  proxies?: ProxySeries[];
   /** Un proxy existe au catalogue, qu'il ait été chargé ou non.
-   *  C'est cette information, et non la présence de `proxyPrices`, qui permet
+   *  C'est cette information, et non la présence de `proxies`, qui permet
    *  de proposer l'option à l'utilisateur au moment de l'alerte. */
   hasProxyAvailable?: boolean;
   /** Première date de cotation réelle de l'actif. */
@@ -240,6 +253,11 @@ export interface RealMetrics {
   totalGain: number;
   totalReturn: number;
   cagr: number;
+  /** Rendement de l'argent placé, versements déflatés à leur propre date et
+   *  valeur finale déflatée au taux terminal. Sans lui, la bascule en euros
+   *  constants laisserait ce seul chiffre en euros courants au milieu d'un jeu
+   *  déflaté — une incohérence invisible et d'autant plus trompeuse. */
+  moneyWeightedReturn: number | null;
   volatility: number;
   drawdown: DrawdownInfo;
   bestMonth: PeriodExtreme | null;
@@ -325,7 +343,15 @@ export interface BacktestMetrics {
   feeImpact: number;
 
   totalReturn: number;
+  /** Rendement annualisé de l'allocation, pondéré par le temps : chaque
+   *  période compte autant, quelles que soient les sommes engagées ce
+   *  jour-là. C'est la performance des actifs choisis, pas celle du
+   *  portefeuille de l'investisseur. */
   cagr: number;
+  /** Rendement annualisé de l'argent effectivement placé, versements et dates
+   *  compris. Diverge du `cagr` dès qu'on verse régulièrement, et peut classer
+   *  deux allocations dans l'ordre inverse. `null` quand rien n'a été versé. */
+  moneyWeightedReturn: number | null;
   volatility: number;
   drawdown: DrawdownInfo;
   bestMonth: PeriodExtreme | null;

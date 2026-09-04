@@ -49,16 +49,22 @@ const ESSENTIAL_ROWS: Row[] = [
     higherIsBetter: true,
   },
   {
+    // Le rendement de l'argent placé, non celui de l'allocation : c'est le seul
+    // des deux qui range les colonnes dans le même ordre que « ce que vous
+    // auriez », juste au-dessus. Le rendement annualisé reste dans le tableau
+    // d'expert, où il est comparable aux chiffres publiés des indices.
     label: "Ça rapporte",
-    value: (m) => m.cagr,
+    value: (m) => m.moneyWeightedReturn,
     format: (v) => (v === null ? "—" : `${formatPercent(v)} par an`),
     higherIsBetter: true,
+    metricKey: "moneyWeightedReturn",
   },
   {
     label: "Le pire moment",
     value: (m) => m.drawdown.maxDrawdown,
     format: (v) => formatPercent(v),
     higherIsBetter: true,
+    metricKey: "maxDrawdown",
   },
 ];
 
@@ -81,6 +87,13 @@ const EXPERT_ROWS: Row[] = [
     format: (v) => formatPercent(v),
     higherIsBetter: true,
     metricKey: "cagr",
+  },
+  {
+    label: "Rendement de votre argent",
+    value: (m) => m.moneyWeightedReturn,
+    format: (v) => (v === null ? "—" : formatPercent(v)),
+    higherIsBetter: true,
+    metricKey: "moneyWeightedReturn",
   },
   {
     label: "Volatilité",
@@ -275,12 +288,22 @@ export function CompareTable({
         </tbody>
       </table>
 
-      {variant === "expert" && (
+      {variant === "expert" ? (
         <p className="mt-2 text-xs text-muted-foreground">
           La meilleure valeur de chaque ligne est surlignée et cochée. Les
           lignes purement descriptives, comme le capital investi, n&apos;ont pas
           de gagnant : investir davantage n&apos;est ni un avantage ni un
           défaut.
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          <span className="font-bold">Ça rapporte</span> mesure ce
+          qu&apos;a gagné votre argent, dates de versement comprises : il classe
+          donc comme la ligne du dessus. Le détail d&apos;expert ajoute le{" "}
+          <span className="font-bold">rendement annualisé</span>, qui note
+          l&apos;allocation période par période — c&apos;est celui-là qui se
+          compare aux chiffres publiés d&apos;un indice, et les deux peuvent
+          désigner des gagnants différents.
         </p>
       )}
     </div>

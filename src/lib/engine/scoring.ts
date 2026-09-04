@@ -26,7 +26,11 @@ export interface MetricScore {
  */
 export function levelFor(
   value: number,
-  threshold: MetricThreshold,
+  // Volontairement réduit aux deux champs utilisés : la même échelle sert aux
+  // métriques du backtest et aux axes de robustesse, qui ne partagent que ça.
+  // Exiger un `MetricThreshold` entier ferait dépendre l'un de l'autre sans
+  // raison.
+  threshold: Pick<MetricThreshold, "bounds" | "higherIsBetter">,
 ): ScoreLevel {
   let bucket = 0;
   for (const bound of threshold.bounds) {
@@ -61,6 +65,7 @@ export function scoreMetric(
 export function scoreAllMetrics(metrics: BacktestMetrics): MetricScore[] {
   return [
     scoreMetric("cagr", metrics.cagr),
+    scoreMetric("moneyWeightedReturn", metrics.moneyWeightedReturn),
     scoreMetric("volatility", metrics.volatility),
     scoreMetric("maxDrawdown", metrics.drawdown.maxDrawdown),
     scoreMetric("sharpe", metrics.sharpe),

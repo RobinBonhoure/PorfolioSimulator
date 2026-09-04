@@ -21,15 +21,20 @@ export function BreakdownDonut({
   slices,
   title,
   emptyLabel,
+  note,
 }: {
   slices: BreakdownSlice[];
   title: string;
   emptyLabel: string;
+  /** Précision sur l'assiette du calcul, quand elle n'est pas le portefeuille
+   *  entier. Une répartition muette sur ce qu'elle couvre se lit comme couvrant
+   *  le tout. */
+  note?: string;
 }) {
   if (slices.length === 0) {
     return (
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className="text-sm font-bold">{title}</h3>
         <p className="text-sm text-muted-foreground">{emptyLabel}</p>
       </div>
     );
@@ -45,7 +50,10 @@ export function BreakdownDonut({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium">{title}</h3>
+      <div className="space-y-0.5">
+        <h3 className="text-sm font-bold">{title}</h3>
+        {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
+      </div>
 
       <div className="flex items-center gap-4">
         <div className="size-[132px] shrink-0">

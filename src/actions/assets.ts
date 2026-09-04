@@ -78,6 +78,7 @@ export async function addFallbackAsset(
         currency: probe.currency,
         sectorBreakdown: null,
         geoBreakdown: null,
+        capBreakdown: null,
         inceptionDate: probe.firstTradeDate,
         isCatalog: false,
         dataPartial: true,

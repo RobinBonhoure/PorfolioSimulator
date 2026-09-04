@@ -146,7 +146,11 @@ export function CompareRanking({
               </div>
 
               <p className="pl-5 text-[11px] text-muted-foreground">
-                {formatSignedPercent(item.metrics.cagr, 1)} par an ·{" "}
+                {formatSignedPercent(
+                  item.metrics.moneyWeightedReturn ?? item.metrics.cagr,
+                  1,
+                )}{" "}
+                par an ·{" "}
                 {formatPercent(item.metrics.drawdown.maxDrawdown, 0)} au pire
               </p>
             </li>

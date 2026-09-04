@@ -35,6 +35,13 @@ export function StrategyCard({ strategy }: { strategy: StrategyListItem }) {
 
   const metrics = strategy.metrics;
 
+  /** Ce que l'argent a rapporté, versements et dates compris. Repli sur le
+   *  rendement annualisé de l'allocation si aucun versement n'a été fait : le
+   *  taux sur l'argent n'a alors pas de solution. */
+  const headlineReturn = metrics
+    ? (metrics.moneyWeightedReturn ?? metrics.cagr)
+    : null;
+
   return (
     <div className="group relative flex flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-foreground/20">
       <div className="flex items-start gap-2">
@@ -116,15 +123,19 @@ export function StrategyCard({ strategy }: { strategy: StrategyListItem }) {
         // Les deux chiffres qui comptent, en pilules : ce que ça rapporte et ce
         // que ça fait subir. Le Sharpe a rejoint les détails d'expert de la
         // page — sur une carte, il n'aidait que ceux qui n'en ont pas besoin.
+        //
+        // Le rendement affiché est celui de l'argent placé, versements et dates
+        // compris, et non le rendement annualisé de l'allocation : c'est le
+        // seul des deux qui classe les cartes dans le même ordre que les gains.
         <div className="flex flex-wrap items-center gap-2 border-t pt-3">
           <span
             className={`tnum rounded-full px-2.5 py-1 text-xs font-bold ${
-              metrics.cagr >= 0
+              (headlineReturn ?? 0) >= 0
                 ? "bg-[var(--pos)]/12 text-[var(--pos-text)]"
                 : "bg-[var(--neg)]/12 text-[var(--neg-text)]"
             }`}
           >
-            {formatSignedPercent(metrics.cagr, 1)} par an
+            {formatSignedPercent(headlineReturn ?? 0, 1)} par an
           </span>
           <span className="tnum rounded-full bg-[var(--neg)]/12 px-2.5 py-1 text-xs font-bold text-[var(--neg-text)]">
             {formatPercent(metrics.drawdown.maxDrawdown, 0)} au pire

@@ -26,6 +26,14 @@ export interface ResultAssetInfo {
   targetWeight: number;
   sectorBreakdown: Record<string, number> | null;
   geoBreakdown: Record<string, number> | null;
+  capBreakdown: Record<string, number> | null;
+  /** Nature du sous-jacent. Nécessaire ici, et pas seulement décoratif : la
+   *  répartition par taille de capitalisation ne porte que sur la poche
+   *  actions, et c'est ce champ qui permet de l'isoler. */
+  assetClass: string | null;
+  /** Indice répliqué. Sert à repérer deux supports qui font double emploi
+   *  sans avoir à estimer quoi que ce soit. */
+  trackedIndex: string | null;
   dataPartial: boolean;
 }
 
@@ -211,6 +219,9 @@ export async function runBacktestForStrategy(options: {
         targetWeight: entry.targetWeight,
         sectorBreakdown: asset.sectorBreakdown,
         geoBreakdown: asset.geoBreakdown,
+        capBreakdown: asset.capBreakdown,
+        assetClass: asset.assetClass,
+        trackedIndex: asset.trackedIndex,
         dataPartial: asset.dataPartial,
       };
     }),

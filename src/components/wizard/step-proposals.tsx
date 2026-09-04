@@ -113,9 +113,13 @@ export function StepProposals({
               ) : metrics ? (
                 <dl className="grid grid-cols-2 gap-2 rounded-md bg-secondary/40 p-2.5 text-xs">
                   <div>
-                    <dt className="text-muted-foreground">Rendement annualisé</dt>
+                    <dt className="text-muted-foreground">
+                      Rendement de votre argent
+                    </dt>
                     <dd className="tnum text-sm font-semibold text-[var(--pos-text)]">
-                      {formatPercent(metrics.cagr)}
+                      {formatPercent(
+                        metrics.moneyWeightedReturn ?? metrics.cagr,
+                      )}
                     </dd>
                   </div>
                   <div>
